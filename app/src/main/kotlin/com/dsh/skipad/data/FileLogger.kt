@@ -37,6 +37,7 @@ object FileLogger {
             try {
                 val u = uri ?: findExisting(ctx) ?: create(ctx)
                 uri = u
+                if (u == null) return@execute
                 ctx.contentResolver.openOutputStream(u, "wa")?.use { out ->
                     out.write((line + "\n").toByteArray())
                 }
