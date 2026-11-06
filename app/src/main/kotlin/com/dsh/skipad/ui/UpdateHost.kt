@@ -87,7 +87,7 @@ fun UpdateHost(ctx: Context) {
                         Text("正在下载… ${s.percent}%", style = MaterialTheme.typography.bodyMedium)
                     }
                     is UpdateChecker.State.Downloaded -> {
-                        Text("下载完成", style = MaterialTheme.typography.bodyMedium)
+                        Text("下载完成 v${s.version}", style = MaterialTheme.typography.bodyMedium)
                     }
                     is UpdateChecker.State.Failed -> {
                         Text(
@@ -115,7 +115,7 @@ fun UpdateHost(ctx: Context) {
                     Button(onClick = {}, enabled = false) { Text("下载中 ${s.percent}%") }
                 }
                 else -> {
-                    Button(onClick = { scope.launch { UpdateChecker.download(ctx, t.url) } }) {
+                    Button(onClick = { scope.launch { UpdateChecker.download(ctx, t.url, t.version) } }) {
                         Text("立即更新")
                     }
                 }

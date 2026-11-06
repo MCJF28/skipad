@@ -41,7 +41,10 @@ private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = li
             "网络层拦截作为子开关，受总开关约束",
             "首次启动加入完整引导，讲清两层防护",
             "「关于」页可随时重新查看教程",
-            "开启其他 VPN 时，网络层拦截会被系统收回并自动停止"
+            "开启其他 VPN 时，网络层拦截会被系统收回并自动停止",
+            "修复：网络层拦截导致全部域名解析失败（tun 与 DNS 地址冲突）",
+            "学习模式浮层点一下不再消失，退出应用才结束",
+            "更新包会显示实际下载到的版本号，便于排查"
         )
     ),
     "2.1" to listOf(
@@ -296,14 +299,14 @@ private fun UpdateCard(ctx: Context) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = {
-                    scope.launch { UpdateChecker.download(ctx, state.url) }
+                    scope.launch { UpdateChecker.download(ctx, state.url, state.version) }
                 }) { Text("下载更新") }
             }
             is UpdateChecker.State.Downloading -> {
                 Text("正在下载 ${state.percent}%", style = MaterialTheme.typography.bodySmall)
             }
             is UpdateChecker.State.Downloaded -> {
-                Text("下载完成", style = MaterialTheme.typography.bodySmall)
+                Text("下载完成 v${state.version}，点击安装", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { UpdateChecker.install(ctx, state.file) }) {
                     Text("安装更新")

@@ -34,7 +34,9 @@ class AdFilterVpnService : VpnService() {
         private const val CHANNEL = "skipad_vpn"
         private const val NOTI_ID = 4201
         private const val UPSTREAM = "223.5.5.5"
-        private const val TUN_ADDR = "10.111.222.1"
+        // tun 自身地址与 DNS 服务器地址必须不同，否则查询包的源/目的地址相同，内核会丢弃应答
+        private const val TUN_ADDR = "10.111.222.2"
+        private const val DNS_ADDR = "10.111.222.1"
 
         @Volatile
         var running: Boolean = false
@@ -124,8 +126,8 @@ class AdFilterVpnService : VpnService() {
             val b = Builder()
             b.setSession("开屏跳过 · 广告域名过滤")
             b.addAddress(TUN_ADDR, 32)
-            b.addRoute(TUN_ADDR, 32)
-            b.addDnsServer(TUN_ADDR)
+            b.addRoute(DNS_ADDR, 32)
+            b.addDnsServer(DNS_ADDR)
             b.setBlocking(true)
             val pfd = b.establish()
             if (pfd == null) {

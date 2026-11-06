@@ -35,7 +35,7 @@ object UpdateChecker {
         data object UpToDate : State
         data class Available(val version: String, val url: String, val notes: String) : State
         data class Downloading(val percent: Int) : State
-        data class Downloaded(val file: File) : State
+        data class Downloaded(val file: File, val version: String = "") : State
         data class Failed(val message: String) : State
     }
 
@@ -99,8 +99,9 @@ object UpdateChecker {
         }
     }
 
-    suspend fun download(ctx: Context, url: String) = withContext(Dispatchers.IO) {
+    suspend fun download(ctx: Context, url: String, version: String = "") = withContext(Dispatchers.IO) {
         try {
+            LogBus.add("开始下载 v$version")
             state = State.Downloading(0)
             val dir = File(ctx.cacheDir, "update").apply { mkdirs() }
             // 清掉历史文件，避免安装器拿到上一次的旧包
@@ -134,7 +135,7 @@ object UpdateChecker {
 
             val newCode = archiveVersionCode(ctx, out)
             val curCode = currentVersionCode(ctx)
-            LogBus.add("更新包 versionCode=$newCode，当前=$curCode，大小=${out.length()}")
+            LogBus.add("下载完成 v$version · versionCode=$newCode（当前 $curCode）· ${out.length()} 字节")
             if (newCode <= 0L) {
                 state = State.Failed("下载到的文件不是有效的安装包")
                 return@withContext
@@ -143,7 +144,7 @@ object UpdateChecker {
                 state = State.Failed("下载到的安装包版本未高于当前版本（$newCode ≤ $curCode），已放弃安装")
                 return@withContext
             }
-            state = State.Downloaded(out)
+            state = State.Downloaded(out, version)
         } catch (t: Throwable) {
             state = State.Failed("下载失败：${t.message}")
         }

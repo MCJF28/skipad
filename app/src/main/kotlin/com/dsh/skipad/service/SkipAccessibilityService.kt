@@ -109,6 +109,14 @@ class SkipAccessibilityService : AccessibilityService() {
     private fun onWindowChanged(e: AccessibilityEvent) {
         val pkg = e.packageName?.toString() ?: return
         if (pkg == packageName) return   // 自己的界面（含校准浮层）不算目标
+
+        // 学习模式：离开目标应用即结束
+        val pending = Prefs.pendingCalibration()
+        if (pending.isNotBlank() && pending != pkg) {
+            Prefs.clearPendingCalibration()
+            hideCalibrationOverlay()
+            LogBus.add("已退出应用，学习结束")
+        }
         val cls = e.className?.toString() ?: ""
         val now = SystemClock.uptimeMillis()
         val r = Rules.forPackage(pkg)
@@ -214,7 +222,7 @@ class SkipAccessibilityService : AccessibilityService() {
     private fun showCalibrationOverlay(pkg: String) {
         val wm = getSystemService(WINDOW_SERVICE) as? WindowManager ?: return
         val hint = TextView(this).apply {
-            text = "点一下屏幕上的「跳过」按钮\n（点空白处可取消）"
+            text = "点一下「跳过」按钮记录位置\n可重复点按调整 · 退出该应用即结束学习"
             textSize = 17f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
@@ -236,10 +244,13 @@ class SkipAccessibilityService : AccessibilityService() {
                 val fx = (ev.rawX / w).coerceIn(0.01f, 0.99f)
                 val fy = (ev.rawY / h).coerceIn(0.01f, 0.99f)
                 CustomRules.save(pkg, fx, fy)
-                Prefs.clearPendingCalibration()
-                LogBus.add("学习完成 $pkg → (${"%.3f".format(fx)}, ${"%.3f".format(fy)})")
-                Toast.makeText(this, "已记录该应用的跳过按钮位置", Toast.LENGTH_SHORT).show()
-                hideCalibrationOverlay()
+                LogBus.add("学习记录 $pkg → (${"%.3f".format(fx)}, ${"%.3f".format(fy)})")
+                // 不关闭浮层：允许再点一次调整，退出该应用时才结束学习
+                Toast.makeText(
+                    this,
+                    "已记录位置，可再点一次调整；退出该应用即结束学习",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
             true
         }
