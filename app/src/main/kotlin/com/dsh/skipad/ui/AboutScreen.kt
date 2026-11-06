@@ -28,6 +28,39 @@ import androidx.compose.ui.unit.dp
 
 private const val REPO_URL = "https://github.com/MCJF28/skipad"
 
+/** 版本更新说明（应用内展示，不联网） */
+private val CHANGELOG: List<Pair<String, List<String>>> = listOf(
+    "1.3.1" to listOf(
+        "新增版本更新说明与更新日志",
+        "仓库转为公开，支持从 Releases 下载历史版本"
+    ),
+    "1.3.0" to listOf(
+        "新增「关于」页：工作原理、隐私承诺、能力边界",
+        "补充 README 与开源说明"
+    ),
+    "1.2.1" to listOf(
+        "修复：跳过广告后回到桌面，会误点到桌面图标",
+        "点击前强制校验窗口包名必须为目标应用"
+    ),
+    "1.2.0" to listOf(
+        "修复应用图标与名称读取不到的问题",
+        "新增 7 个应用的开屏规则（Keep / 知乎 / 网易云音乐 / QQ音乐 / 美图秀秀 / 墨迹天气 / 网易邮箱大师）",
+        "移除高德地图（规则不准确）"
+    ),
+    "1.1.0" to listOf(
+        "改用 Material 图标，去掉表情符号",
+        "页签切换、状态卡、统计数字加入过渡动画",
+        "新增侧载应用「允许受限设置」引导"
+    ),
+    "1.0.0" to listOf(
+        "界面重构为 首页 / 规则 / 日志 三个页签",
+        "新增跳过统计、单应用开关、深色模式"
+    ),
+    "0.9.0" to listOf(
+        "支持哔哩哔哩暂停时弹出的广告，自动点「取消」"
+    )
+)
+
 @Composable
 fun AboutScreen(ctx: Context) {
     val version = remember {
@@ -109,6 +142,22 @@ fun AboutScreen(ctx: Context) {
                 Bullet("·", "纯图片绘制的广告、自绘控件、没有可读文字的界面，可能识别不到按钮。")
                 Bullet("·", "应用改版、换广告 SDK 后，原有规则可能失效，需要更新规则库。")
                 Bullet("·", "不同厂商系统的无障碍行为有差异，效果因机型和系统版本而不同。")
+            }
+        }
+
+        item {
+            SectionCard("更新日志") {
+                CHANGELOG.forEachIndexed { index, entry ->
+                    Text(
+                        text = "v${entry.first}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (index == 0) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface
+                    )
+                    entry.second.forEach { Bullet("·", it) }
+                    if (index != CHANGELOG.lastIndex) Spacer(Modifier.height(10.dp))
+                }
             }
         }
 
