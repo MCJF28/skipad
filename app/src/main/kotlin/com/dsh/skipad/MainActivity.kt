@@ -14,6 +14,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -93,7 +94,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @androidx.compose.runtime.Composable
-private fun NavItem(
+private fun RowScope.NavItem(
     index: Int,
     current: Int,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
