@@ -17,23 +17,37 @@ import com.dsh.skipad.engine.Rules
 /**
  * 开屏广告跳过服务。
  *
- * 安全边界：
- *  - 只在「前台包名发生切换」时开启观察窗口
- *  - 同包名有冷却时间，避免切出去回来就被点
- *  - 坐标兜底必须看到锚点文字（如「广告」角标）且在屏幕上部
+ * 会话模型：
+ *  - 目标包回到前台 = 新会话（点过一次也重新计数）
+ *  - 目标包真正离开前台（被别的应用顶掉）= 会话结束
+ *  - 系统 UI / 输入法 / 权限弹窗等中间窗口不会打断会话
  */
 class SkipAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    private var currentPkg: String? = null
+    private var sessionPkg: String? = null
+    private var rule: Rule? = null
     private var startAt = 0L
     private var clicks = 0
-    private var rule: Rule? = null
     private var running = false
+    private var leftForeground = true
+    private var currentClass = ""
+    private var lastTargetSeen = 0L
     private var lastScanAt = 0L
+    private var seenNodes = 0
 
     private val lastClickAt = HashMap<String, Long>()
+
+    /** 这些包名的窗口弹出不代表目标应用离开前台 */
+    private fun isTransient(pkg: String): Boolean {
+        val p = pkg.lowercase()
+        return p.contains("systemui") ||
+            p.contains("inputmethod") ||
+            p.contains("permissioncontroller") ||
+            p.contains("packageinstaller") ||
+            p.contains("launcher")
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -59,31 +73,44 @@ class SkipAccessibilityService : AccessibilityService() {
 
     private fun onWindowChanged(e: AccessibilityEvent) {
         val pkg = e.packageName?.toString() ?: return
-        if (pkg == currentPkg) return
+        val cls = e.className?.toString() ?: ""
+        val now = SystemClock.uptimeMillis()
+        val r = Rules.forPackage(pkg)
 
-        currentPkg = pkg
-        handler.removeCallbacks(poll)
-        running = false
-        clicks = 0
-        rule = null
-
-        val r = Rules.forPackage(pkg) ?: return
-
-        // 只要目标包离开过前台，本次就是全新会话，不再用时间冷却拦截。
-        // cooldownMs 仅在规则显式配置（>0）时作为额外防抖使用。
-        val last = lastClickAt[pkg] ?: 0L
-        if (r.cooldownMs > 0L && last > 0L && SystemClock.uptimeMillis() - last < r.cooldownMs) {
-            LogBus.add("$pkg 冷却中，跳过")
+        if (r != null) {
+            val startNew = leftForeground || !running || sessionPkg != pkg
+            if (startNew) {
+                sessionPkg = pkg
+                rule = r
+                clicks = 0
+                startAt = now
+                running = true
+                leftForeground = false
+                currentClass = cls
+                LogBus.add("观察 $pkg / $cls")
+                handler.removeCallbacks(poll)
+                scan()
+                if (running) handler.postDelayed(poll, 80L)
+            } else {
+                currentClass = cls
+            }
+            lastTargetSeen = now
             return
         }
 
-        rule = r
-        startAt = SystemClock.uptimeMillis()
-        running = true
-        LogBus.add("观察 $pkg / ${e.className}")
+        if (isTransient(pkg)) return
 
-        scan()                       // 立刻扫一次，抢在广告渲染前
-        if (running) handler.postDelayed(poll, 80L)
+        // 真正切到别的应用
+        if (running) {
+            leftForeground = true
+            if (now - lastTargetSeen > 1200L) {
+                running = false
+                handler.removeCallbacks(poll)
+                LogBus.add("会话结束 $sessionPkg（未见跳过，节点 $seenNodes）")
+            }
+        } else {
+            leftForeground = true
+        }
     }
 
     private fun scan() {
@@ -94,7 +121,7 @@ class SkipAccessibilityService : AccessibilityService() {
         if (elapsed > r.windowMs) {
             running = false
             handler.removeCallbacks(poll)
-            LogBus.add("${r.pkg} 窗口结束")
+            LogBus.add("窗口结束 ${r.pkg}（未见跳过，节点 $seenNodes）")
             return
         }
         lastScanAt = SystemClock.uptimeMillis()
@@ -103,9 +130,14 @@ class SkipAccessibilityService : AccessibilityService() {
             rootInActiveWindow
         } catch (t: Throwable) {
             null
-        } ?: return
+        }
+        if (root == null) {
+            seenNodes = 0
+            return
+        }
+        seenNodes = root.childCount
 
-        val hit = RuleEngine.find(this, root, r, elapsed) ?: return
+        val hit = RuleEngine.find(this, root, r, elapsed, currentClass) ?: return
         if (click(hit)) {
             clicks++
             lastClickAt[r.pkg] = SystemClock.uptimeMillis()

@@ -11,33 +11,42 @@ import java.util.ArrayDeque
  * 判定顺序：
  *  1) 屏幕出现危险文案（协议/授权/支付/片头片尾等）→ 整体放弃本次
  *  2) 文本 / 正则精确命中
- *  3) 固定坐标兜底，但必须同时满足：锚点文字在屏、锚点位于屏幕上部、已过延迟
+ *  3) 固定坐标兜底，前置条件（满足其一）：
+ *       a. 锚点文字（如「广告」）出现在屏幕上部 35%
+ *       b. 当前窗口类名是通用容器（FrameLayout / LinearLayout / ViewGroup …），
+ *          这是开屏广告浮层的典型特征；正常页面通常是具体 Activity 类名
  */
 object RuleEngine {
 
     private const val MAX_NODES = 600
 
-    /** 出现即放弃：这些是真实交互，不该被开屏规则碰到 */
+    /** 开屏广告浮层的典型窗口类名 */
+    private val OVERLAY_CLASS = Regex(
+        "^(android\\.widget\\.(FrameLayout|LinearLayout|RelativeLayout|AbsoluteLayout|ViewGroup)" +
+            "|android\\.view\\.ViewGroup|android\\.widget\\.PopupWindow)$"
+    )
+
     private val DANGER = listOf(
         "同意", "允许", "授权", "登录", "支付", "购买", "立即领取", "下载安装", "确认支付",
         "青少年模式", "隐私政策", "用户协议"
     )
 
-    /** 形如「跳过」但其实是播放器功能的文案 */
     private val NOT_SPLASH = listOf("片头", "片尾", "弹幕", "跳过设置", "跳过片头")
 
     fun find(
         svc: AccessibilityService,
         root: AccessibilityNodeInfo,
         rule: Rule,
-        elapsedMs: Long
+        elapsedMs: Long,
+        windowClass: String
     ): Hit? {
         val nodes = ArrayList<AccessibilityNodeInfo>()
         collect(root, nodes)
         if (nodes.isEmpty()) return null
 
-        val screenH = svc.resources.displayMetrics.heightPixels
-        val screenW = svc.resources.displayMetrics.widthPixels
+        val dm = svc.resources.displayMetrics
+        val screenH = dm.heightPixels
+        val screenW = dm.widthPixels
 
         for (n in nodes) {
             val t = textOf(n) ?: continue
@@ -66,16 +75,18 @@ object RuleEngine {
             }
         }
 
-        // 固定坐标兜底：必须看到锚点在屏幕上部
+        // 固定坐标兜底
         if (rule.hasRegion && elapsedMs >= rule.delayMs + 250L) {
-            val anchored = nodes.any { n ->
+            val anchorOk = nodes.any { n ->
                 val t = textOf(n)
                 t != null && t.contains(rule.anchor) && topOf(n) < screenH * 0.35f
             }
-            if (anchored) {
+            val overlayOk = OVERLAY_CLASS.matches(windowClass)
+            if (anchorOk || overlayOk) {
+                val via = if (overlayOk) "region(overlay=$windowClass)" else "region(anchor=${rule.anchor})"
                 val x = (screenW * rule.regionFx).toInt()
                 val y = (screenH * rule.regionFy).toInt()
-                return Hit(null, x, y, "region(anchor=${rule.anchor})")
+                return Hit(null, x, y, via)
             }
         }
 
@@ -117,12 +128,11 @@ object RuleEngine {
         return null
     }
 
-    /** 可见、尺寸合理、可交互，避免点到全屏大图或不可见节点 */
     private fun isSane(n: AccessibilityNodeInfo): Boolean {
         val r = Rect()
         n.getBoundsInScreen(r)
         if (r.width() <= 0 || r.height() <= 0) return false
-        if (r.width() > 2000 || r.height() > 2000) return false
+        if (r.width() > 3000 || r.height() > 3000) return false
         return try {
             n.isVisibleToUser
         } catch (t: Throwable) {
