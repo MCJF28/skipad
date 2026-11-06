@@ -7,6 +7,12 @@
 
 所有历史版本都可以在 [Releases](https://github.com/MCJF28/skipad/releases) 下载。
 
+## v2.3
+
+### 2.3.0
+- 网络层拦截新增「测试拦截效果」：对 `doubleclick.net`、`googleadservices.com` 做真实解析，显示规则是否命中、解析是否被拦
+- 新增「最近拦截」列表，展示最近 30 条命中域名
+
 ## v2.2
 
 ### 2.2.1

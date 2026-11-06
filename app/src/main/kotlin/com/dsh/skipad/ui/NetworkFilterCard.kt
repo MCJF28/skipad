@@ -32,7 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dsh.skipad.data.NetRules
 import com.dsh.skipad.vpn.AdFilterVpnService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.net.InetAddress
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,12 +49,16 @@ fun NetworkFilterCard(ctx: Context) {
     var showConflict by remember { mutableStateOf(false) }
     var pendingEnable by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf("") }
+    var recent by remember { mutableStateOf(listOf<String>()) }
 
     LaunchedEffect(Unit) {
         while (true) {
             enabled = AdFilterVpnService.running
             blocked = AdFilterVpnService.blocked
             rules = NetRules.count
+            recent = AdFilterVpnService.recentBlocked().take(5)
             delay(1000)
         }
     }
@@ -138,6 +145,51 @@ fun NetworkFilterCard(ctx: Context) {
                     }
                 ) { Text(if (rules > 0) "更新规则" else "下载规则") }
             }
+
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    enabled = enabled && !testing,
+                    onClick = {
+                        testing = true
+                        scope.launch {
+                            testResult = runBlockTest()
+                            testing = false
+                        }
+                    }
+                ) { Text(if (testing) "测试中…" else "测试拦截效果") }
+                if (!enabled) {
+                    Text(
+                        text = "需先开启本功能",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (testResult.isNotBlank()) {
+                Text(
+                    text = testResult,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (recent.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "最近拦截",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                recent.forEach { d ->
+                    Text(
+                        text = "· $d",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 
@@ -186,6 +238,28 @@ fun NetworkFilterCard(ctx: Context) {
             }
         )
     }
+}
+
+/** 真机验证：规则是否命中 + 实际解析是否被拦 */
+private suspend fun runBlockTest(): String = withContext(Dispatchers.IO) {
+    val domains = listOf("doubleclick.net", "googleadservices.com")
+    buildString {
+        for (d in domains) {
+            val inRule = NetRules.isBlocked(d)
+            val resolved = try {
+                InetAddress.getByName(d)
+                true
+            } catch (t: Throwable) {
+                false
+            }
+            append(d)
+            append("：")
+            append(if (inRule) "规则命中" else "规则未命中")
+            append(" · ")
+            append(if (resolved) "解析成功（未被拦截）" else "解析失败（已拦截）")
+            append("\n")
+        }
+    }.trim()
 }
 
 private fun openVpnSettings(ctx: Context) {

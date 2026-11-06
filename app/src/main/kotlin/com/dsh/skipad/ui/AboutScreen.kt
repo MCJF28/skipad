@@ -35,6 +35,12 @@ private const val REPO_URL = "https://github.com/MCJF28/skipad"
 
 /** 版本更新说明（应用内展示，不联网） */
 private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = listOf(
+    "2.3" to listOf(
+        "2.3.0" to listOf(
+            "新增「测试拦截效果」：实际解析两个广告域名，验证是否真的被拦",
+            "新增「最近拦截」域名列表，可直观看到拦了什么"
+        )
+    ),
     "2.2" to listOf(
         "2.2.1" to listOf(
             "修复更新拿到旧安装包：检查更新增加时间戳与 no-cache，绕开代理/CDN 缓存",

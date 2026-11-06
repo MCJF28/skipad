@@ -54,6 +54,27 @@ class AdFilterVpnService : VpnService() {
         var lastBlocked: String = ""
             private set
 
+        private val recent = ArrayDeque<String>()
+
+        /** 记录一次拦截，保留最近 30 条供界面展示 */
+        @Synchronized
+        fun recordBlocked(name: String) {
+            blocked++
+            lastBlocked = name
+            recent.addFirst(name)
+            while (recent.size > 30) recent.removeLast()
+        }
+
+        @Synchronized
+        fun recentBlocked(): List<String> = recent.toList()
+
+        @Synchronized
+        fun resetStats() {
+            blocked = 0
+            queried = 0
+            recent.clear()
+        }
+
         fun start(ctx: Context) {
             val i = Intent(ctx, AdFilterVpnService::class.java).setAction(ACTION_START)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(i)
@@ -204,8 +225,7 @@ class AdFilterVpnService : VpnService() {
             val resp = DnsCodec.buildNxdomain(dns, dnsLen)
             if (resp != null) {
                 writeResponse(out, dstIp, 53, srcIp, srcPort, resp)
-                blocked++
-                lastBlocked = name
+                recordBlocked(name)
                 return true
             }
         }
