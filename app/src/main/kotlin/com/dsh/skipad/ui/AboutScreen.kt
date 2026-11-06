@@ -3,6 +3,8 @@ package com.dsh.skipad.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.dsh.skipad.data.UpdateChecker
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,13 +16,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,10 @@ private const val REPO_URL = "https://github.com/MCJF28/skipad"
 
 /** 版本更新说明（应用内展示，不联网） */
 private val CHANGELOG: List<Pair<String, List<String>>> = listOf(
+    "1.4.0" to listOf(
+        "新增自动检查更新与一键下载安装",
+        "更新日志不再显示 0.9.0 及更早版本"
+    ),
     "1.3.1" to listOf(
         "新增版本更新说明与更新日志",
         "仓库转为公开，支持从 Releases 下载历史版本"
@@ -55,9 +64,6 @@ private val CHANGELOG: List<Pair<String, List<String>>> = listOf(
     "1.0.0" to listOf(
         "界面重构为 首页 / 规则 / 日志 三个页签",
         "新增跳过统计、单应用开关、深色模式"
-    ),
-    "0.9.0" to listOf(
-        "支持哔哩哔哩暂停时弹出的广告，自动点「取消」"
     )
 )
 
@@ -88,6 +94,8 @@ fun AboutScreen(ctx: Context) {
                 )
             }
         }
+
+        item { UpdateCard(ctx) }
 
         item {
             SectionCard("它做什么") {
@@ -122,10 +130,18 @@ fun AboutScreen(ctx: Context) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(6.dp))
-                Bullet("·", "本应用没有申请网络权限（INTERNET），从系统层面就不具备联网能力。")
-                Bullet("·", "事件日志只写入本机 Download/SkipAd/events.log，用于你自己排查问题。")
+                Bullet("·", "应用唯一的联网行为是：向你确认后访问 GitHub，读取版本号并下载新版安装包。")
+                Bullet("·", "代码里没有任何上传逻辑，不发送设备信息、不上报使用数据。")
+                Bullet("·", "事件日志只写入本机 Download/SkipAd/events.log，供你自己排查问题。")
                 Bullet("·", "跳过次数等统计只保存在本机应用数据里，卸载即清除。")
-                Bullet("·", "不收集设备信息、不收集账号、不读取剪贴板和输入内容。")
+                Bullet("·", "不收集账号信息、不读取剪贴板和输入内容。")
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "说明：1.4.0 之前的版本不含网络权限；为了支持自动更新，本版本新增了网络权限，" +
+                        "用途仅限上述检查更新与下载。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
@@ -183,6 +199,71 @@ fun AboutScreen(ctx: Context) {
         }
 
         item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun UpdateCard(ctx: Context) {
+    val scope = rememberCoroutineScope()
+    val state = UpdateChecker.state
+    val current = remember { UpdateChecker.currentVersion(ctx) }
+
+    SectionCard("版本与更新") {
+        Text(
+            "当前版本 v$current",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(Modifier.height(8.dp))
+
+        when (state) {
+            is UpdateChecker.State.Checking -> {
+                Text("正在检查更新…", style = MaterialTheme.typography.bodySmall)
+            }
+            is UpdateChecker.State.UpToDate -> {
+                Text(
+                    "已是最新版本",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            is UpdateChecker.State.Available -> {
+                Text(
+                    "发现新版本 v${state.version}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    scope.launch { UpdateChecker.download(ctx, state.url) }
+                }) { Text("下载更新") }
+            }
+            is UpdateChecker.State.Downloading -> {
+                Text("正在下载 ${state.percent}%", style = MaterialTheme.typography.bodySmall)
+            }
+            is UpdateChecker.State.Downloaded -> {
+                Text("下载完成", style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = { UpdateChecker.install(ctx, state.file) }) {
+                    Text("安装更新")
+                }
+            }
+            is UpdateChecker.State.Failed -> {
+                Text(
+                    state.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            else -> {}
+        }
+
+        Spacer(Modifier.height(4.dp))
+        TextButton(
+            enabled = state !is UpdateChecker.State.Checking &&
+                state !is UpdateChecker.State.Downloading,
+            onClick = { scope.launch { UpdateChecker.check(ctx) } }
+        ) { Text("检查更新") }
     }
 }
 

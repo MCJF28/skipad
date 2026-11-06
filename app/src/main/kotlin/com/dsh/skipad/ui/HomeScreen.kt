@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dsh.skipad.data.Prefs
+import com.dsh.skipad.data.UpdateChecker
 import com.dsh.skipad.isServiceEnabled
 import kotlinx.coroutines.delay
 
@@ -97,6 +98,25 @@ fun HomeScreen(ctx: Context) {
         )
 
         Spacer(Modifier.height(18.dp))
+
+        val updateState = UpdateChecker.state
+        if (updateState is UpdateChecker.State.Available) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Text(
+                    text = "发现新版本 v${updateState.version}，可在「关于」页更新",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),

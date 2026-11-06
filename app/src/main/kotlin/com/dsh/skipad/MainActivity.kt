@@ -28,6 +28,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dsh.skipad.data.LogBus
 import com.dsh.skipad.data.Prefs
+import com.dsh.skipad.data.UpdateChecker
 import com.dsh.skipad.engine.Rules
 import com.dsh.skipad.service.SkipAccessibilityService
 import com.dsh.skipad.ui.AboutScreen
@@ -53,6 +55,11 @@ class MainActivity : ComponentActivity() {
         Rules.load(ctx)
 
         setContent {
+            LaunchedEffect(Unit) {
+                if (Prefs.shouldAutoCheck()) {
+                    UpdateChecker.silentCheck(ctx)
+                }
+            }
             SkipAdTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     var tab by remember { mutableIntStateOf(0) }
