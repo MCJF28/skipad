@@ -46,5 +46,5 @@ data class Rule(
     val matchers: List<Matcher> = emptyList(),
     val pairs: List<PairRule> = emptyList()
 ) {
-    val hasRegion: Boolean get() = regionFx > 0f && regionFy > 0f && anchor.isNotBlank()
+    val hasRegion: Boolean get() = regionFx > 0f && regionFy > 0f
 }

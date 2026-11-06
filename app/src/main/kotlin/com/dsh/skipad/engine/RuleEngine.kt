@@ -94,7 +94,7 @@ object RuleEngine {
 
         // 固定坐标兜底
         if (rule.hasRegion && elapsedMs >= rule.delayMs + 250L) {
-            val anchorOk = nodes.any { n ->
+            val anchorOk = rule.anchor.isNotBlank() && nodes.any { n ->
                 val t = textOf(n)
                 t != null && t.contains(rule.anchor) && topOf(n) < screenH * 0.35f
             }

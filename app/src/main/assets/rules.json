@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "rules": [
     {
       "pkg": "tv.danmaku.bili",
@@ -29,15 +29,15 @@
       ]
     },
     {
-      "pkg": "com.autonavi.minimap",
+      "pkg": "com.gotokeep.keep",
       "enabled": true,
       "delayMs": 60,
       "windowMs": 6000,
       "maxClicks": 1,
       "cooldownMs": 0,
-      "anchor": "",
-      "regionFx": 0.0,
-      "regionFy": 0.0,
+      "anchor": "广告",
+      "regionFx": 0.893,
+      "regionFy": 0.069,
       "matchers": [
         {
           "type": "text",
@@ -45,7 +45,137 @@
         },
         {
           "type": "regex",
-          "value": "^跳过\\s*\\d*\\s*[sS]?$"
+          "value": "^\\d*\\s*跳过\\s*\\d*$"
+        }
+      ]
+    },
+    {
+      "pkg": "com.zhihu.android",
+      "enabled": true,
+      "delayMs": 60,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "cooldownMs": 0,
+      "anchor": "广告",
+      "regionFx": 0.902,
+      "regionFy": 0.066,
+      "matchers": [
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^\\d*\\s*跳过\\s*\\d*$"
+        }
+      ]
+    },
+    {
+      "pkg": "com.netease.cloudmusic",
+      "enabled": true,
+      "delayMs": 60,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "cooldownMs": 0,
+      "anchor": "广告",
+      "regionFx": 0.907,
+      "regionFy": 0.07,
+      "matchers": [
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^\\d*\\s*跳过\\s*\\d*$"
+        }
+      ]
+    },
+    {
+      "pkg": "com.tencent.qqmusic",
+      "enabled": true,
+      "delayMs": 60,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "cooldownMs": 0,
+      "anchor": "广告",
+      "regionFx": 0.907,
+      "regionFy": 0.074,
+      "matchers": [
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^\\d*\\s*跳过\\s*\\d*$"
+        }
+      ]
+    },
+    {
+      "pkg": "com.mt.mtxx.mtxx",
+      "enabled": true,
+      "delayMs": 60,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "cooldownMs": 0,
+      "anchor": "广告",
+      "regionFx": 0.9,
+      "regionFy": 0.039,
+      "matchers": [
+        {
+          "type": "text",
+          "value": "跳过广告"
+        },
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^\\d*\\s*跳过\\s*\\d*$"
+        }
+      ]
+    },
+    {
+      "pkg": "com.moji.mjweather",
+      "enabled": true,
+      "delayMs": 60,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "cooldownMs": 0,
+      "anchor": "广告",
+      "regionFx": 0.907,
+      "regionFy": 0.081,
+      "matchers": [
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^\\d*\\s*跳过\\s*\\d*$"
+        }
+      ]
+    },
+    {
+      "pkg": "com.netease.mail",
+      "enabled": true,
+      "delayMs": 60,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "cooldownMs": 0,
+      "anchor": "广告",
+      "regionFx": 0.907,
+      "regionFy": 0.093,
+      "matchers": [
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^\\d*\\s*跳过\\s*\\d*$"
         }
       ]
     }
