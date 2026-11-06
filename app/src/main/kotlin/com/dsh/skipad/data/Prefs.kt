@@ -60,12 +60,8 @@ object Prefs {
         sp?.edit()?.putBoolean("auto_check", v)?.apply()
     }
 
-    /** 12 小时内只自动检查一次 */
-    fun shouldAutoCheck(): Boolean {
-        if (!autoCheckEnabled()) return false
-        val last = sp?.getLong("update_checked_at", 0L) ?: 0L
-        return System.currentTimeMillis() - last > 12L * 3600L * 1000L
-    }
+    /** 每次启动都检查（仅受「自动检查」开关控制） */
+    fun shouldAutoCheck(): Boolean = autoCheckEnabled()
 
     private fun dayKey(): String =
         SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
