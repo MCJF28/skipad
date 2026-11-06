@@ -73,6 +73,19 @@ object Prefs {
         sp?.edit()?.remove("pending_calibration")?.apply()
     }
 
+    /** 防护总开关：关闭后无障碍跳过与网络层过滤都不工作 */
+    fun masterEnabled(): Boolean = sp?.getBoolean("master_enabled", true) ?: true
+
+    fun setMasterEnabled(v: Boolean) {
+        sp?.edit()?.putBoolean("master_enabled", v)?.apply()
+    }
+
+    fun onboardingDone(): Boolean = sp?.getBoolean("onboarding_done", false) ?: false
+
+    fun setOnboardingDone(v: Boolean) {
+        sp?.edit()?.putBoolean("onboarding_done", v)?.apply()
+    }
+
     fun skippedVersion(): String = sp?.getString("skipped_version", "") ?: ""
 
     fun setSkippedVersion(v: String) {

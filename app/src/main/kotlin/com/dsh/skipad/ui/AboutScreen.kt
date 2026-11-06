@@ -35,6 +35,15 @@ private const val REPO_URL = "https://github.com/MCJF28/skipad"
 
 /** 版本更新说明（应用内展示，不联网） */
 private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = listOf(
+    "2.2" to listOf(
+        "2.2.0" to listOf(
+            "首页新增「防护总开关」，一键暂停全部功能",
+            "网络层拦截作为子开关，受总开关约束",
+            "首次启动加入完整引导，讲清两层防护",
+            "「关于」页可随时重新查看教程",
+            "开启其他 VPN 时，网络层拦截会被系统收回并自动停止"
+        )
+    ),
     "2.1" to listOf(
         "2.1.0" to listOf(
             "新增网络层拦截（实验，默认关闭）：本地 DNS 过滤广告域名",
@@ -101,7 +110,7 @@ private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = li
 )
 
 @Composable
-fun AboutScreen(ctx: Context) {
+fun AboutScreen(ctx: Context, onShowTutorial: () -> Unit = {}) {
     val version = remember {
         runCatching {
             ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
@@ -129,6 +138,17 @@ fun AboutScreen(ctx: Context) {
         }
 
         item { UpdateCard(ctx) }
+
+        item {
+            SectionCard("使用教程") {
+                Text(
+                    "两层防护分别是什么、怎么开、有什么代价，第一次使用时的引导都在这里。",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = onShowTutorial) { Text("重新查看教程") }
+            }
+        }
 
         item {
             SectionCard("它做什么") {

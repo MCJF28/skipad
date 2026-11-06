@@ -28,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dsh.skipad.data.Prefs
 import com.dsh.skipad.data.UpdateChecker
+import com.dsh.skipad.vpn.AdFilterVpnService
 import com.dsh.skipad.isServiceEnabled
 import kotlinx.coroutines.delay
 
@@ -99,6 +101,44 @@ fun HomeScreen(ctx: Context) {
         )
 
         Spacer(Modifier.height(18.dp))
+
+        // 总开关
+        var master by remember { mutableStateOf(Prefs.masterEnabled()) }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "防护总开关",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = if (master) "全部功能运行中" else "已全部暂停，不再跳过任何广告",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (master) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = master,
+                    onCheckedChange = { v ->
+                        Prefs.setMasterEnabled(v)
+                        master = v
+                        if (!v) {
+                            AdFilterVpnService.stop(ctx)
+                        }
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
 
         val updateState = UpdateChecker.state
         if (updateState is UpdateChecker.State.Available) {

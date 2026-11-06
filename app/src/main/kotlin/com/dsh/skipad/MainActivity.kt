@@ -19,8 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -28,15 +28,17 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dsh.skipad.data.CustomRules
-import com.dsh.skipad.data.NetRules
 import com.dsh.skipad.data.LogBus
+import com.dsh.skipad.data.NetRules
 import com.dsh.skipad.data.Prefs
 import com.dsh.skipad.data.UpdateChecker
 import com.dsh.skipad.engine.Rules
@@ -44,6 +46,7 @@ import com.dsh.skipad.service.SkipAccessibilityService
 import com.dsh.skipad.ui.AboutScreen
 import com.dsh.skipad.ui.HomeScreen
 import com.dsh.skipad.ui.LogScreen
+import com.dsh.skipad.ui.Onboarding
 import com.dsh.skipad.ui.RulesScreen
 import com.dsh.skipad.ui.SkipAdTheme
 import com.dsh.skipad.ui.UpdateHost
@@ -65,41 +68,56 @@ class MainActivity : ComponentActivity() {
                     UpdateChecker.silentCheck(ctx)
                 }
             }
-            SkipAdTheme {
-                UpdateHost(ctx)
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    var tab by remember { mutableIntStateOf(0) }
 
-                    Scaffold(
-                        bottomBar = {
-                            NavigationBar {
-                                NavItem(0, tab, Icons.Filled.Home, "首页") { tab = it }
-                                NavItem(1, tab, Icons.Filled.List, "规则") { tab = it }
-                                NavItem(2, tab, Icons.Filled.Notifications, "日志") { tab = it }
-                                NavItem(3, tab, Icons.Filled.Info, "关于") { tab = it }
-                            }
-                        }
-                    ) { padding ->
-                        Box(Modifier.padding(padding)) {
-                            AnimatedContent(
-                                targetState = tab,
-                                transitionSpec = {
-                                    val forward = targetState > initialState
-                                    val enter = slideInHorizontally(tween(280)) { w ->
-                                        if (forward) w / 8 else -w / 8
-                                    } + fadeIn(tween(220))
-                                    val exit = slideOutHorizontally(tween(280)) { w ->
-                                        if (forward) -w / 10 else w / 10
-                                    } + fadeOut(tween(140))
-                                    enter togetherWith exit
-                                },
-                                label = "tab"
-                            ) { t ->
-                                when (t) {
-                                    0 -> HomeScreen(ctx)
-                                    1 -> RulesScreen(ctx)
-                                    2 -> LogScreen()
-                                    else -> AboutScreen(ctx)
+            SkipAdTheme {
+                var onboarded by remember { mutableStateOf(Prefs.onboardingDone()) }
+                var showTutorial by remember { mutableStateOf(false) }
+
+                when {
+                    !onboarded -> Onboarding(ctx) {
+                        Prefs.setOnboardingDone(true)
+                        onboarded = true
+                    }
+
+                    showTutorial -> Onboarding(ctx) { showTutorial = false }
+
+                    else -> {
+                        UpdateHost(ctx)
+                        Surface(color = MaterialTheme.colorScheme.background) {
+                            var tab by remember { mutableIntStateOf(0) }
+
+                            Scaffold(
+                                bottomBar = {
+                                    NavigationBar {
+                                        NavItem(0, tab, Icons.Filled.Home, "首页") { tab = it }
+                                        NavItem(1, tab, Icons.Filled.List, "规则") { tab = it }
+                                        NavItem(2, tab, Icons.Filled.Notifications, "日志") { tab = it }
+                                        NavItem(3, tab, Icons.Filled.Info, "关于") { tab = it }
+                                    }
+                                }
+                            ) { padding ->
+                                Box(Modifier.padding(padding)) {
+                                    AnimatedContent(
+                                        targetState = tab,
+                                        transitionSpec = {
+                                            val forward = targetState > initialState
+                                            val enter = slideInHorizontally(tween(280)) { w ->
+                                                if (forward) w / 8 else -w / 8
+                                            } + fadeIn(tween(220))
+                                            val exit = slideOutHorizontally(tween(280)) { w ->
+                                                if (forward) -w / 10 else w / 10
+                                            } + fadeOut(tween(140))
+                                            enter togetherWith exit
+                                        },
+                                        label = "tab"
+                                    ) { t ->
+                                        when (t) {
+                                            0 -> HomeScreen(ctx)
+                                            1 -> RulesScreen(ctx)
+                                            2 -> LogScreen()
+                                            else -> AboutScreen(ctx) { showTutorial = true }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -110,7 +128,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@androidx.compose.runtime.Composable
+@Composable
 private fun RowScope.NavItem(
     index: Int,
     current: Int,

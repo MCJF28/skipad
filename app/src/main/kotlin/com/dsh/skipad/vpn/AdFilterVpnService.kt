@@ -115,6 +115,11 @@ class AdFilterVpnService : VpnService() {
 
     private fun startTunnel() {
         if (running || tun != null) return
+        if (!com.dsh.skipad.data.Prefs.masterEnabled()) {
+            LogBus.add("总开关已关闭，不启动网络层拦截")
+            stopSelf()
+            return
+        }
         try {
             val b = Builder()
             b.setSession("开屏跳过 · 广告域名过滤")

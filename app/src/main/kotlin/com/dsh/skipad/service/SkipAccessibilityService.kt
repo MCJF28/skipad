@@ -73,6 +73,14 @@ class SkipAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val e = event ?: return
+        if (!Prefs.masterEnabled()) {
+            if (running) {
+                running = false
+                handler.removeCallbacks(poll)
+                LogBus.add("总开关已关闭，停止观察")
+            }
+            return
+        }
         val evPkg = e.packageName?.toString()
         if (!evPkg.isNullOrBlank()) {
             if (evPkg == packageName) return
