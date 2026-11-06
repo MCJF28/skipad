@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
+import com.dsh.skipad.data.LogBus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -102,6 +103,8 @@ object UpdateChecker {
         try {
             state = State.Downloading(0)
             val dir = File(ctx.cacheDir, "update").apply { mkdirs() }
+            // 清掉历史文件，避免安装器拿到上一次的旧包
+            dir.listFiles()?.forEach { it.delete() }
             val out = File(dir, "skipad-new.apk")
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15000
@@ -128,10 +131,42 @@ object UpdateChecker {
                 }
             }
             conn.disconnect()
+
+            val newCode = archiveVersionCode(ctx, out)
+            val curCode = currentVersionCode(ctx)
+            LogBus.add("更新包 versionCode=$newCode，当前=$curCode，大小=${out.length()}")
+            if (newCode <= 0L) {
+                state = State.Failed("下载到的文件不是有效的安装包")
+                return@withContext
+            }
+            if (newCode <= curCode) {
+                state = State.Failed("下载到的安装包版本未高于当前版本（$newCode ≤ $curCode），已放弃安装")
+                return@withContext
+            }
             state = State.Downloaded(out)
         } catch (t: Throwable) {
             state = State.Failed("下载失败：${t.message}")
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun archiveVersionCode(ctx: Context, file: File): Long = try {
+        val ai = ctx.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+        when {
+            ai == null -> -1L
+            android.os.Build.VERSION.SDK_INT >= 28 -> ai.longVersionCode
+            else -> ai.versionCode.toLong()
+        }
+    } catch (t: Throwable) {
+        -1L
+    }
+
+    @Suppress("DEPRECATION")
+    private fun currentVersionCode(ctx: Context): Long = try {
+        val pi = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+        if (android.os.Build.VERSION.SDK_INT >= 28) pi.longVersionCode else pi.versionCode.toLong()
+    } catch (t: Throwable) {
+        0L
     }
 
     /** 调起系统安装器；若没有「安装未知应用」权限会先跳去授权 */
