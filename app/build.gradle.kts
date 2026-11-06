@@ -14,8 +14,8 @@ android {
         applicationId = "com.dsh.skipad"
         minSdk = 26
         targetSdk = 36
-        versionCode = 21
-        versionName = "2.0.0"
+        versionCode = 22
+        versionName = "2.0.1"
     }
 
     signingConfigs {

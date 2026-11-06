@@ -2,6 +2,7 @@ package com.dsh.skipad.ui
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -140,15 +141,15 @@ fun RulesScreen(ctx: Context) {
 
         item {
             Text(
-                text = if (query.isBlank()) "添加其他应用（点一下开始学习）"
-                else "搜索结果（${others.size}）",
+                text = if (query.isBlank()) "其他应用 ${others.size} 个 · 点一下开始学习"
+                else "搜索结果 ${others.size} 个",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
 
-        items(others.take(if (query.isBlank()) 60 else 200), key = { it.pkg }) { app ->
+        items(others.take(300), key = { it.pkg }) { app ->
             AddRow(ctx, app)
         }
 
@@ -288,7 +289,12 @@ fun loadLaunchableApps(ctx: Context): List<AppEntry> {
     return list.mapNotNull { ri ->
         val pkg = ri.activityInfo?.packageName ?: return@mapNotNull null
         if (pkg == ctx.packageName) return@mapNotNull null
-        runCatching { AppEntry(pkg, ri.loadLabel(pm).toString()) }.getOrNull()
+        val ai = runCatching { pm.getApplicationInfo(pkg, 0) }.getOrNull() ?: return@mapNotNull null
+        // 系统自带的组件没有开屏广告，不列出来；但用户从应用商店更新过的系统应用保留
+        val isSystem = (ai.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+        val isUpdated = (ai.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        if (isSystem && !isUpdated) return@mapNotNull null
+        runCatching { AppEntry(pkg, pm.getApplicationLabel(ai).toString()) }.getOrNull()
     }.distinctBy { it.pkg }.sortedBy { it.label }
 }
 
