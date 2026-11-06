@@ -224,6 +224,10 @@ fun HomeScreen(ctx: Context) {
             Spacer(Modifier.height(14.dp))
         }
 
+        NetworkFilterCard(ctx)
+
+        Spacer(Modifier.height(14.dp))
+
         // 侧载应用的系统限制提示
         Card(
             modifier = Modifier

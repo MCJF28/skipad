@@ -7,6 +7,14 @@
 
 所有历史版本都可以在 [Releases](https://github.com/MCJF28/skipad/releases) 下载。
 
+## v2.1
+
+### 2.1.0
+- 新增「网络层拦截」（实验功能，默认关闭）：基于本地 `VpnService` 的 DNS 过滤
+- 规则来源 [AWAvenue-Ads-Rule](https://github.com/TG-Twilight/AWAvenue-Ads-Rule)，可在应用内更新
+- 检测到其他 VPN 占用时给出提示；连续转发失败会自动关闭，避免断网
+- 说明：该机制**拦不住开屏广告**，主要用于第三方广告 SDK 域名
+
 ## v2.0
 
 ### 2.0.2
