@@ -31,6 +31,7 @@ class SkipAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        LogBus.init(this)
         Rules.load(this)
         LogBus.add("无障碍服务已连接，规则 ${Rules.size()} 条")
     }

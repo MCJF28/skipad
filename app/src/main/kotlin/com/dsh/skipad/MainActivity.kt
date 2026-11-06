@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val ctx = applicationContext
+        LogBus.init(ctx)
         Rules.load(ctx)
         setContent {
             MaterialTheme {
