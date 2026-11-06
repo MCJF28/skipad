@@ -36,6 +36,11 @@ private const val REPO_URL = "https://github.com/MCJF28/skipad"
 /** 版本更新说明（应用内展示，不联网） */
 private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = listOf(
     "2.2" to listOf(
+        "2.2.1" to listOf(
+            "修复更新拿到旧安装包：检查更新增加时间戳与 no-cache，绕开代理/CDN 缓存",
+            "日志记录检查结果与下载到的 versionCode",
+            "更新失败时可改用浏览器下载"
+        ),
         "2.2.0" to listOf(
             "首页新增「防护总开关」，一键暂停全部功能",
             "网络层拦截作为子开关，受总开关约束",
@@ -306,7 +311,7 @@ private fun UpdateCard(ctx: Context) {
                 Text("正在下载 ${state.percent}%", style = MaterialTheme.typography.bodySmall)
             }
             is UpdateChecker.State.Downloaded -> {
-                Text("下载完成 v${state.version}，点击安装", style = MaterialTheme.typography.bodySmall)
+                Text("下载完成 v${state.version}（versionCode ${state.code}），点击安装", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { UpdateChecker.install(ctx, state.file) }) {
                     Text("安装更新")
@@ -318,6 +323,10 @@ private fun UpdateCard(ctx: Context) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
+                Spacer(Modifier.height(6.dp))
+                TextButton(onClick = { openUrl(ctx, "https://github.com/MCJF28/skipad/releases/latest") }) {
+                    Text("用浏览器下载")
+                }
             }
             else -> {}
         }

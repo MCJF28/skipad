@@ -35,7 +35,7 @@ object UpdateChecker {
         data object UpToDate : State
         data class Available(val version: String, val url: String, val notes: String) : State
         data class Downloading(val percent: Int) : State
-        data class Downloaded(val file: File, val version: String = "") : State
+        data class Downloaded(val file: File, val version: String = "", val code: Long = 0L) : State
         data class Failed(val message: String) : State
     }
 
@@ -56,11 +56,16 @@ object UpdateChecker {
         if (state is State.Checking) return@withContext
         if (!quiet) state = State.Checking
         try {
-            val conn = (URL(API).openConnection() as HttpURLConnection).apply {
+            // 加时间戳与 no-cache：避免代理/CDN 缓存旧版本信息
+            val bust = "$API?t=${System.currentTimeMillis()}"
+            val conn = (URL(bust).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 8000
                 readTimeout = 8000
+                useCaches = false
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("User-Agent", "skipad-updater")
+                setRequestProperty("Cache-Control", "no-cache, no-store")
+                setRequestProperty("Pragma", "no-cache")
             }
             val code = conn.responseCode
             if (code != 200) {
@@ -88,6 +93,7 @@ object UpdateChecker {
                 state = State.Failed("版本信息不完整")
                 return@withContext
             }
+            LogBus.add("检查更新 → v$tag / $apkUrl")
             state = if (isNewer(tag, currentVersion(ctx))) {
                 State.Available(tag, apkUrl, notes)
             } else {
@@ -111,7 +117,9 @@ object UpdateChecker {
                 connectTimeout = 15000
                 readTimeout = 30000
                 instanceFollowRedirects = true
+                useCaches = false
                 setRequestProperty("User-Agent", "skipad-updater")
+                setRequestProperty("Cache-Control", "no-cache")
             }
             val total = conn.contentLengthLong
             conn.inputStream.use { input ->
@@ -144,7 +152,7 @@ object UpdateChecker {
                 state = State.Failed("下载到的安装包版本未高于当前版本（$newCode ≤ $curCode），已放弃安装")
                 return@withContext
             }
-            state = State.Downloaded(out, version)
+            state = State.Downloaded(out, version, newCode)
         } catch (t: Throwable) {
             state = State.Failed("下载失败：${t.message}")
         }
