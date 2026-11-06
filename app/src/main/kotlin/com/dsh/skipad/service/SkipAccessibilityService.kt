@@ -227,7 +227,7 @@ class SkipAccessibilityService : AccessibilityService() {
                 val h = if (v.height > 0) v.height else resources.displayMetrics.heightPixels
                 val fx = (ev.rawX / w).coerceIn(0.01f, 0.99f)
                 val fy = (ev.rawY / h).coerceIn(0.01f, 0.99f)
-                CustomRules.save(this, pkg, fx, fy)
+                CustomRules.save(pkg, fx, fy)
                 Prefs.clearPendingCalibration()
                 LogBus.add("学习完成 $pkg → (${"%.3f".format(fx)}, ${"%.3f".format(fy)})")
                 Toast.makeText(this, "已记录该应用的跳过按钮位置", Toast.LENGTH_SHORT).show()
