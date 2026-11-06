@@ -158,6 +158,13 @@ object UpdateChecker {
         }
     }
 
+    /** 主版本号提升（如 1.x → 2.0）视为必须更新 */
+    fun isMajorUpdate(remote: String, local: String): Boolean {
+        val r = remote.split('.').firstOrNull()?.toIntOrNull() ?: 0
+        val l = local.split('.').firstOrNull()?.toIntOrNull() ?: 0
+        return r > l
+    }
+
     /** 语义化版本比较：1.10.0 > 1.9.3 */
     private fun isNewer(remote: String, local: String): Boolean {
         fun parts(v: String) = v.split('.', '-', '+')

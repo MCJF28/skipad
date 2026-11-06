@@ -50,6 +50,12 @@ object Prefs {
             .apply()
     }
 
+    fun skippedVersion(): String = sp?.getString("skipped_version", "") ?: ""
+
+    fun setSkippedVersion(v: String) {
+        sp?.edit()?.putString("skipped_version", v)?.apply()
+    }
+
     fun markUpdateChecked() {
         sp?.edit()?.putLong("update_checked_at", System.currentTimeMillis())?.apply()
     }

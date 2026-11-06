@@ -44,6 +44,7 @@ import com.dsh.skipad.ui.HomeScreen
 import com.dsh.skipad.ui.LogScreen
 import com.dsh.skipad.ui.RulesScreen
 import com.dsh.skipad.ui.SkipAdTheme
+import com.dsh.skipad.ui.UpdateHost
 
 class MainActivity : ComponentActivity() {
 
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             SkipAdTheme {
+                UpdateHost(ctx)
                 Surface(color = MaterialTheme.colorScheme.background) {
                     var tab by remember { mutableIntStateOf(0) }
 
