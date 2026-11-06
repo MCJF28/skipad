@@ -22,6 +22,11 @@ object LogBus {
     }
 
     @Synchronized
+    fun clear() {
+        entries.clear()
+    }
+
+    @Synchronized
     fun add(msg: String) {
         val line = "${fmt.format(Date())}  $msg"
         entries.add(0, line)

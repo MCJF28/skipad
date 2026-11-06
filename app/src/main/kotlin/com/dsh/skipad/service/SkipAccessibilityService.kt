@@ -9,6 +9,7 @@ import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.dsh.skipad.data.LogBus
+import com.dsh.skipad.data.Prefs
 import com.dsh.skipad.engine.Hit
 import com.dsh.skipad.engine.Rule
 import com.dsh.skipad.engine.RuleEngine
@@ -55,6 +56,7 @@ class SkipAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        Prefs.init(this)
         LogBus.init(this)
         Rules.load(this)
         LogBus.add("无障碍服务已连接，规则 ${Rules.size()} 条")
@@ -154,6 +156,7 @@ class SkipAccessibilityService : AccessibilityService() {
             lastClickAt[r.pkg] = SystemClock.uptimeMillis()
             running = false
             handler.removeCallbacks(poll)
+            Prefs.onSkip()
             LogBus.add("已跳过 ${r.pkg} · ${hit.via} · ${elapsed}ms")
         }
     }
@@ -178,6 +181,7 @@ class SkipAccessibilityService : AccessibilityService() {
         val hit = RuleEngine.findPair(root, r.pairs) ?: return
         if (click(hit)) {
             lastPairClickAt = SystemClock.uptimeMillis()
+            Prefs.onSkip()
             LogBus.add("已点击 ${hit.via} · $pkg")
         }
     }

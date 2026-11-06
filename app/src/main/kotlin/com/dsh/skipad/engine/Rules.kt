@@ -2,6 +2,7 @@ package com.dsh.skipad.engine
 
 import android.content.Context
 import com.dsh.skipad.data.LogBus
+import com.dsh.skipad.data.Prefs
 import org.json.JSONObject
 
 /** 规则库：从 assets/rules.json 载入，按包名索引。 */
@@ -27,8 +28,11 @@ object Rules {
 
     fun forPackage(pkg: String): Rule? {
         val r = map[pkg] ?: return null
-        return if (r.enabled) r else null
+        if (!r.enabled) return null
+        return if (Prefs.isRuleEnabled(pkg, true)) r else null
     }
+
+    fun all(): List<Rule> = map.values.sortedBy { it.pkg }
 
     fun size(): Int = map.size
 
