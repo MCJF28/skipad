@@ -1,6 +1,7 @@
 package com.dsh.skipad.engine
 
 import android.content.Context
+import com.dsh.skipad.data.CustomRules
 import com.dsh.skipad.data.LogBus
 import com.dsh.skipad.data.Prefs
 import org.json.JSONObject
@@ -16,23 +17,80 @@ object Rules {
 
     fun load(ctx: Context) {
         if (loaded) return
+        CustomRules.init(ctx)
+        var merged = emptyMap<String, Rule>()
         try {
             val text = ctx.assets.open("rules.json").bufferedReader().use { it.readText() }
-            map = parse(text)
-            loaded = true
-            LogBus.add("规则库载入 ${map.size} 条")
+            merged = parse(text)
         } catch (t: Throwable) {
-            LogBus.add("规则库载入失败: ${t.message}")
+            LogBus.add("内置规则载入失败: ${t.message}")
         }
+        // 在线规则覆盖内置规则，字段不冲突时以在线为准
+        try {
+            val f = java.io.File(ctx.filesDir, "rules_remote.json")
+            if (f.exists()) {
+                val remote = parse(f.readText())
+                if (remote.isNotEmpty()) {
+                    merged = merged + remote
+                    LogBus.add("在线规则载入 ${remote.size} 条")
+                }
+            }
+        } catch (t: Throwable) {
+            LogBus.add("在线规则载入失败: ${t.message}")
+        }
+        map = merged
+        loaded = true
+        LogBus.add("规则库载入 ${map.size} 条")
+    }
+
+    /** 规则库被在线更新后重新载入 */
+    fun reload(ctx: Context) {
+        loaded = false
+        load(ctx)
     }
 
     fun forPackage(pkg: String): Rule? {
+        if (!Prefs.isRuleEnabled(pkg, true)) return null
+
+        // 用户自己标记的规则优先
+        val c = CustomRules.get(pkg)
+        if (c != null) {
+            return Rule(
+                pkg = pkg,
+                anchor = "",
+                regionFx = c.first,
+                regionFy = c.second,
+                matchers = listOf(
+                    Matcher("text", "跳过"),
+                    Matcher("regex", "^\\d*\\s*跳过\\s*\\d*$")
+                )
+            )
+        }
+
         val r = map[pkg] ?: return null
-        if (!r.enabled) return null
-        return if (Prefs.isRuleEnabled(pkg, true)) r else null
+        return if (r.enabled) r else null
     }
 
-    fun all(): List<Rule> = map.values.sortedBy { it.pkg }
+    fun all(): List<Rule> {
+        val custom = CustomRules.all().map { (pkg, xy) ->
+            Rule(
+                pkg = pkg,
+                anchor = "",
+                regionFx = xy.first,
+                regionFy = xy.second,
+                matchers = listOf(
+                    Matcher("text", "跳过"),
+                    Matcher("regex", "^\\d*\\s*跳过\\s*\\d*$")
+                )
+            )
+        }
+        val merged = LinkedHashMap<String, Rule>()
+        for (r in map.values) merged[r.pkg] = r
+        for (r in custom) merged[r.pkg] = r
+        return merged.values.sortedBy { it.pkg }
+    }
+
+    fun isCustom(pkg: String): Boolean = CustomRules.get(pkg) != null
 
     fun size(): Int = map.size
 

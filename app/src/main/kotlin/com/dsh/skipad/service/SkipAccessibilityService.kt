@@ -1,13 +1,22 @@
 package com.dsh.skipad.service
 
 import android.accessibilityservice.AccessibilityService
+import android.graphics.Color
+import android.graphics.PixelFormat
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
+import android.widget.TextView
+import android.widget.Toast
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.dsh.skipad.data.CustomRules
 import com.dsh.skipad.data.LogBus
 import com.dsh.skipad.data.Prefs
 import com.dsh.skipad.engine.Hit
@@ -56,6 +65,7 @@ class SkipAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Prefs.init(this)
+        CustomRules.init(this)
         LogBus.init(this)
         Rules.load(this)
         LogBus.add("无障碍服务已连接，规则 ${Rules.size()} 条")
@@ -63,6 +73,11 @@ class SkipAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val e = event ?: return
+        val evPkg = e.packageName?.toString()
+        if (!evPkg.isNullOrBlank()) {
+            if (evPkg == packageName) return
+            maybeShowCalibration(evPkg)
+        }
         if (e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val p = e.packageName?.toString()
             if (!p.isNullOrBlank()) fgPkg = p
@@ -85,6 +100,7 @@ class SkipAccessibilityService : AccessibilityService() {
 
     private fun onWindowChanged(e: AccessibilityEvent) {
         val pkg = e.packageName?.toString() ?: return
+        if (pkg == packageName) return   // 自己的界面（含校准浮层）不算目标
         val cls = e.className?.toString() ?: ""
         val now = SystemClock.uptimeMillis()
         val r = Rules.forPackage(pkg)
@@ -170,8 +186,72 @@ class SkipAccessibilityService : AccessibilityService() {
             lastClickAt[r.pkg] = SystemClock.uptimeMillis()
             running = false
             handler.removeCallbacks(poll)
-            Prefs.onSkip()
+            Prefs.onSkip(r.pkg)
             LogBus.add("已跳过 ${r.pkg} · ${hit.via} · ${elapsed}ms")
+        }
+    }
+
+    // ---------------- 学习模式：校准浮层 ----------------
+
+    @Volatile
+    private var overlayView: View? = null
+
+    private fun maybeShowCalibration(pkg: String) {
+        if (overlayView != null) return
+        val pending = Prefs.pendingCalibration()
+        if (pending.isBlank() || pending != pkg) return
+        showCalibrationOverlay(pkg)
+    }
+
+    private fun showCalibrationOverlay(pkg: String) {
+        val wm = getSystemService(WINDOW_SERVICE) as? WindowManager ?: return
+        val hint = TextView(this).apply {
+            text = "点一下屏幕上的「跳过」按钮\n（点空白处可取消）"
+            textSize = 17f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setBackgroundColor(0x99000000.toInt())
+            isClickable = true
+        }
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        )
+        hint.setOnTouchListener { v, ev ->
+            if (ev.action == MotionEvent.ACTION_UP) {
+                val w = if (v.width > 0) v.width else resources.displayMetrics.widthPixels
+                val h = if (v.height > 0) v.height else resources.displayMetrics.heightPixels
+                val fx = (ev.rawX / w).coerceIn(0.01f, 0.99f)
+                val fy = (ev.rawY / h).coerceIn(0.01f, 0.99f)
+                CustomRules.save(this, pkg, fx, fy)
+                Prefs.clearPendingCalibration()
+                LogBus.add("学习完成 $pkg → (${"%.3f".format(fx)}, ${"%.3f".format(fy)})")
+                Toast.makeText(this, "已记录该应用的跳过按钮位置", Toast.LENGTH_SHORT).show()
+                hideCalibrationOverlay()
+            }
+            true
+        }
+        try {
+            wm.addView(hint, params)
+            overlayView = hint
+            LogBus.add("开始学习 $pkg，等待点击跳过按钮")
+        } catch (t: Throwable) {
+            LogBus.add("校准浮层失败: ${t.message}")
+        }
+    }
+
+    private fun hideCalibrationOverlay() {
+        val v = overlayView ?: return
+        overlayView = null
+        val wm = getSystemService(WINDOW_SERVICE) as? WindowManager ?: return
+        try {
+            wm.removeView(v)
+        } catch (t: Throwable) {
+            // 已被移除
         }
     }
 
@@ -202,7 +282,7 @@ class SkipAccessibilityService : AccessibilityService() {
         val hit = RuleEngine.findPair(root, r.pairs) ?: return
         if (click(hit)) {
             lastPairClickAt = SystemClock.uptimeMillis()
-            Prefs.onSkip()
+            Prefs.onSkip(r.pkg)
             LogBus.add("已点击 ${hit.via} · $pkg")
         }
     }
@@ -244,6 +324,7 @@ class SkipAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        hideCalibrationOverlay()
         running = false
         handler.removeCallbacks(poll)
         instance = null

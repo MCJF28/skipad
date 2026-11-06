@@ -2,6 +2,7 @@ package com.dsh.skipad.ui
 
 import android.content.Context
 import android.content.Intent
+import android.os.PowerManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
@@ -156,6 +157,73 @@ fun HomeScreen(ctx: Context) {
 
         Spacer(Modifier.height(14.dp))
 
+        // 服务保障
+        val batteryOk = remember { mutableStateOf(isIgnoringBattery(ctx)) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                batteryOk.value = isIgnoringBattery(ctx)
+                delay(1500)
+            }
+        }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp)) {
+                Text(
+                    text = "后台保障",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (batteryOk.value) "电池优化：已关闭，服务不易被系统杀掉"
+                        else "电池优化：未关闭，系统可能在后台停掉服务",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (batteryOk.value) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (!batteryOk.value) {
+                        TextButton(onClick = { requestIgnoreBattery(ctx) }) { Text("去设置") }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // 广告排行
+        val top = remember { Prefs.topApps().take(3) }
+        if (top.isNotEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(18.dp)) {
+                    Text(
+                        text = "跳过最多",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    top.forEach { (pkg, count) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = loadLabel(ctx.packageManager, pkg),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "$count 次",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+
         // 侧载应用的系统限制提示
         Card(
             modifier = Modifier
@@ -298,6 +366,28 @@ private fun HelpStep(index: String, text: String) {
         )
         Spacer(Modifier.width(8.dp))
         Text(text = text, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+fun isIgnoringBattery(ctx: Context): Boolean {
+    return try {
+        val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
+        pm.isIgnoringBatteryOptimizations(ctx.packageName)
+    } catch (t: Throwable) {
+        true
+    }
+}
+
+fun requestIgnoreBattery(ctx: Context) {
+    try {
+        val i = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            Uri.parse("package:" + ctx.packageName)
+        )
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(i)
+    } catch (t: Throwable) {
+        openAppDetails(ctx)
     }
 }
 

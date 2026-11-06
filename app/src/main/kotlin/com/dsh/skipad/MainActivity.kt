@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.dsh.skipad.data.CustomRules
 import com.dsh.skipad.data.LogBus
 import com.dsh.skipad.data.Prefs
 import com.dsh.skipad.data.UpdateChecker
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val ctx = applicationContext
         Prefs.init(ctx)
+        CustomRules.init(ctx)
         LogBus.init(ctx)
         Rules.load(ctx)
 

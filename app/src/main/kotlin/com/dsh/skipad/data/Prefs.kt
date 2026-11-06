@@ -38,7 +38,7 @@ object Prefs {
     }
 
     @Synchronized
-    fun onSkip() {
+    fun onSkip(pkg: String) {
         val s = sp ?: return
         val today = dayKey()
         val sameDay = s.getString(K_DAY, "") == today
@@ -47,7 +47,30 @@ object Prefs {
             .putInt(K_TOTAL, s.getInt(K_TOTAL, 0) + 1)
             .putString(K_DAY, today)
             .putInt(K_DAY_COUNT, dayCount + 1)
+            .putInt("stat_$pkg", s.getInt("stat_$pkg", 0) + 1)
             .apply()
+    }
+
+    fun skipsFor(pkg: String): Int = sp?.getInt("stat_$pkg", 0) ?: 0
+
+    /** 按跳过次数排序的应用统计 */
+    fun topApps(): List<Pair<String, Int>> {
+        val s = sp ?: return emptyList()
+        return s.all.entries
+            .filter { it.key.startsWith("stat_") && it.value is Int && (it.value as Int) > 0 }
+            .map { it.key.removePrefix("stat_") to (it.value as Int) }
+            .sortedByDescending { it.second }
+    }
+
+    // ---- 校准（学习模式）----
+    fun pendingCalibration(): String = sp?.getString("pending_calibration", "") ?: ""
+
+    fun setPendingCalibration(pkg: String) {
+        sp?.edit()?.putString("pending_calibration", pkg)?.apply()
+    }
+
+    fun clearPendingCalibration() {
+        sp?.edit()?.remove("pending_calibration")?.apply()
     }
 
     fun skippedVersion(): String = sp?.getString("skipped_version", "") ?: ""
