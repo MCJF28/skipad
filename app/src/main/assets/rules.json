@@ -12,8 +12,20 @@
       "regionFx": 0.868,
       "regionFy": 0.929,
       "matchers": [
-        { "type": "text", "value": "跳过" },
-        { "type": "regex", "value": "^跳过\\s*\\d*\\s*[sS]?$" }
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^跳过\\s*\\d*\\s*[sS]?$"
+        }
+      ],
+      "pairs": [
+        {
+          "when": "展示广告",
+          "tap": "取消"
+        }
       ]
     },
     {
@@ -27,8 +39,14 @@
       "regionFx": 0.0,
       "regionFy": 0.0,
       "matchers": [
-        { "type": "text", "value": "跳过" },
-        { "type": "regex", "value": "^跳过\\s*\\d*\\s*[sS]?$" }
+        {
+          "type": "text",
+          "value": "跳过"
+        },
+        {
+          "type": "regex",
+          "value": "^跳过\\s*\\d*\\s*[sS]?$"
+        }
       ]
     }
   ]

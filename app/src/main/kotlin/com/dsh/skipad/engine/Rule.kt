@@ -6,6 +6,15 @@ data class Matcher(
     val value: String
 )
 
+/**
+ * 条件点击：屏幕上出现 whenText 时，点击 tapText（精确匹配）。
+ * 用于「暂停时弹出 3秒后将展示广告 + 取消」这类随时可能出现的浮层。
+ */
+data class PairRule(
+    val whenText: String,
+    val tapText: String
+)
+
 /** 一次命中结果 */
 data class Hit(
     val node: android.view.accessibility.AccessibilityNodeInfo?,
@@ -34,7 +43,8 @@ data class Rule(
     val cooldownMs: Long = 0L,
     val regionFx: Float = 0f,
     val regionFy: Float = 0f,
-    val matchers: List<Matcher> = emptyList()
+    val matchers: List<Matcher> = emptyList(),
+    val pairs: List<PairRule> = emptyList()
 ) {
     val hasRegion: Boolean get() = regionFx > 0f && regionFy > 0f && anchor.isNotBlank()
 }

@@ -118,6 +118,31 @@ object RuleEngine {
         return null
     }
 
+    /**
+     * 条件点击：当屏幕上存在 when 文案时，找到并返回 tap 目标。
+     * 用于「3秒后将展示广告 + 取消」这类暂停浮层。
+     */
+    fun findPair(root: AccessibilityNodeInfo, pairs: List<PairRule>): Hit? {
+        if (pairs.isEmpty()) return null
+        val nodes = ArrayList<AccessibilityNodeInfo>()
+        collect(root, nodes)
+        lastNodeCount = nodes.size
+
+        for (p in pairs) {
+            val hasWhen = nodes.any { n -> textOf(n)?.contains(p.whenText) == true }
+            if (!hasWhen) continue
+
+            var loose: AccessibilityNodeInfo? = null
+            for (n in nodes) {
+                val t = textOf(n)?.trim() ?: continue
+                if (t == p.tapText && isSane(n)) return centerHit(n, "pair:${p.tapText}")
+                if (loose == null && t.contains(p.tapText) && isSane(n)) loose = n
+            }
+            if (loose != null) return centerHit(loose, "pair~:${p.tapText}")
+        }
+        return null
+    }
+
     private fun collect(root: AccessibilityNodeInfo, out: MutableList<AccessibilityNodeInfo>) {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.addLast(root)

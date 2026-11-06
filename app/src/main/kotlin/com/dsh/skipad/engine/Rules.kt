@@ -52,6 +52,17 @@ object Rules {
                 }
             }
 
+            val pairs = ArrayList<PairRule>()
+            val pa = o.optJSONArray("pairs")
+            if (pa != null) {
+                for (j in 0 until pa.length()) {
+                    val e = pa.optJSONObject(j) ?: continue
+                    val w = e.optString("when", "")
+                    val t = e.optString("tap", "")
+                    if (w.isNotBlank() && t.isNotBlank()) pairs.add(PairRule(w, t))
+                }
+            }
+
             out[pkg] = Rule(
                 pkg = pkg,
                 enabled = o.optBoolean("enabled", true),
@@ -63,7 +74,8 @@ object Rules {
                 cooldownMs = o.optLong("cooldownMs", 0L),
                 regionFx = o.optDouble("regionFx", 0.0).toFloat(),
                 regionFy = o.optDouble("regionFy", 0.0).toFloat(),
-                matchers = matchers
+                matchers = matchers,
+                pairs = pairs
             )
         }
         return out

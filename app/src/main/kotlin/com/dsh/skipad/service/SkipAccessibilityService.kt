@@ -35,6 +35,9 @@ class SkipAccessibilityService : AccessibilityService() {
     private var currentClass = ""
     private var lastTargetSeen = 0L
     private var lastScanAt = 0L
+    private var fgPkg: String? = null
+    private var lastPairScanAt = 0L
+    private var lastPairClickAt = 0L
     private var seenNodes = 0
 
     private val lastClickAt = HashMap<String, Long>()
@@ -59,13 +62,21 @@ class SkipAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val e = event ?: return
+        if (e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val p = e.packageName?.toString()
+            if (!p.isNullOrBlank()) fgPkg = p
+        }
         when (e.eventType) {
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> onWindowChanged(e)
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                onWindowChanged(e)
+                pairScan()
+            }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 if (running) {
                     val now = SystemClock.uptimeMillis()
                     if (now - lastScanAt >= 60L) scan()
                 }
+                pairScan()
             }
             else -> Unit
         }
@@ -144,6 +155,30 @@ class SkipAccessibilityService : AccessibilityService() {
             running = false
             handler.removeCallbacks(poll)
             LogBus.add("已跳过 ${r.pkg} · ${hit.via} · ${elapsed}ms")
+        }
+    }
+
+    /** 条件点击通道：与开屏窗口无关，只要目标包在前台就持续检查 */
+    private fun pairScan() {
+        val pkg = fgPkg ?: return
+        val r = Rules.forPackage(pkg) ?: return
+        if (r.pairs.isEmpty()) return
+
+        val now = SystemClock.uptimeMillis()
+        if (now - lastPairScanAt < 400L) return
+        if (now - lastPairClickAt < 1500L) return
+        lastPairScanAt = now
+
+        val root = try {
+            rootInActiveWindow
+        } catch (t: Throwable) {
+            null
+        } ?: return
+
+        val hit = RuleEngine.findPair(root, r.pairs) ?: return
+        if (click(hit)) {
+            lastPairClickAt = SystemClock.uptimeMillis()
+            LogBus.add("已点击 ${hit.via} · $pkg")
         }
     }
 
