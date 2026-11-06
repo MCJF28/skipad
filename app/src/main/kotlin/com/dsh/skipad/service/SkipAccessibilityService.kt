@@ -49,8 +49,7 @@ class SkipAccessibilityService : AccessibilityService() {
         return p.contains("systemui") ||
             p.contains("inputmethod") ||
             p.contains("permissioncontroller") ||
-            p.contains("packageinstaller") ||
-            p.contains("launcher")
+            p.contains("packageinstaller")
     }
 
     override fun onServiceConnected() {
@@ -148,6 +147,21 @@ class SkipAccessibilityService : AccessibilityService() {
             seenNodes = 0
             return
         }
+
+        // 硬约束：当前窗口必须属于目标应用，否则说明用户已经离开（比如回了桌面），
+        // 绝不能在任何非目标界面上点击。
+        val rootPkg = try {
+            root.packageName?.toString()
+        } catch (t: Throwable) {
+            null
+        }
+        if (rootPkg != null && rootPkg != r.pkg) {
+            running = false
+            handler.removeCallbacks(poll)
+            LogBus.add("离开 ${r.pkg}（当前 $rootPkg），停止观察")
+            return
+        }
+
         seenNodes = RuleEngine.lastNodeCount
 
         val hit = RuleEngine.find(this, root, r, elapsed, currentClass) ?: return
@@ -177,6 +191,13 @@ class SkipAccessibilityService : AccessibilityService() {
         } catch (t: Throwable) {
             null
         } ?: return
+
+        val rootPkg = try {
+            root.packageName?.toString()
+        } catch (t: Throwable) {
+            null
+        }
+        if (rootPkg != null && rootPkg != pkg) return
 
         val hit = RuleEngine.findPair(root, r.pairs) ?: return
         if (click(hit)) {
