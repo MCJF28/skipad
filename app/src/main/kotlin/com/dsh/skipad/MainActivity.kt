@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,7 @@ import com.dsh.skipad.data.LogBus
 import com.dsh.skipad.data.Prefs
 import com.dsh.skipad.engine.Rules
 import com.dsh.skipad.service.SkipAccessibilityService
+import com.dsh.skipad.ui.AboutScreen
 import com.dsh.skipad.ui.HomeScreen
 import com.dsh.skipad.ui.LogScreen
 import com.dsh.skipad.ui.RulesScreen
@@ -60,7 +62,8 @@ class MainActivity : ComponentActivity() {
                             NavigationBar {
                                 NavItem(0, tab, Icons.Filled.Home, "首页") { tab = it }
                                 NavItem(1, tab, Icons.Filled.List, "规则") { tab = it }
-                                NavItem(2, tab, Icons.Filled.Info, "日志") { tab = it }
+                                NavItem(2, tab, Icons.Filled.Notifications, "日志") { tab = it }
+                                NavItem(3, tab, Icons.Filled.Info, "关于") { tab = it }
                             }
                         }
                     ) { padding ->
@@ -82,7 +85,8 @@ class MainActivity : ComponentActivity() {
                                 when (t) {
                                     0 -> HomeScreen(ctx)
                                     1 -> RulesScreen(ctx)
-                                    else -> LogScreen()
+                                    2 -> LogScreen()
+                                    else -> AboutScreen(ctx)
                                 }
                             }
                         }

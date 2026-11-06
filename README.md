@@ -1,0 +1,108 @@
+# 开屏跳过
+
+安卓应用启动时的开屏广告，自动帮你点掉「跳过」。
+
+**不联网 · 不上传数据 · 不需要 root**
+
+[![build-apk](https://github.com/MCJF28/skipad/actions/workflows/build.yml/badge.svg)](https://github.com/MCJF28/skipad/actions/workflows/build.yml)
+
+---
+
+## 下载安装
+
+前往 [**Releases**](https://github.com/MCJF28/skipad/releases/latest) 下载最新的 `skipad-x.y.z.apk`，用文件管理器打开安装即可。
+
+也可以从最新的 CI 构建里取包：[Actions](https://github.com/MCJF28/skipad/actions/workflows/build.yml) → 最新一次成功构建 → Artifacts → `skipad-apk`。
+
+> 所有版本使用同一个签名密钥，可以直接覆盖安装升级。
+
+## 它做什么
+
+开屏广告本身无法被阻止显示，本应用做的是：**在广告出现的那一瞬间帮你把「跳过」按钮点掉**，让你尽快进入应用的正常界面。
+
+所以它不能保证开屏广告完全不显示，广告画面仍会短暂出现（通常零点几秒到一两秒）。
+
+## 支持的应用
+
+| 应用 | 包名 | 按钮位置 |
+|---|---|---|
+| 哔哩哔哩 | `tv.danmaku.bili` | 右下角 |
+| Keep | `com.gotokeep.keep` | 右上角 |
+| 知乎 | `com.zhihu.android` | 右上角 |
+| 网易云音乐 | `com.netease.cloudmusic` | 右上角 |
+| QQ 音乐 | `com.tencent.qqmusic` | 右上角 |
+| 美图秀秀 | `com.mt.mtxx.mtxx` | 右上角 |
+| 墨迹天气 | `com.moji.mjweather` | 右上角 |
+| 网易邮箱大师 | `com.netease.mail` | 右上角 |
+
+另外支持哔哩哔哩「暂停时弹出的广告」——识别到「展示广告」提示时自动点「取消」。
+
+每个应用都可以在「规则」页单独关掉。
+
+## 工作原理
+
+1. 使用 Android 的 **无障碍服务（AccessibilityService）** 读取当前屏幕上的控件信息：文字、位置、是否可点击。
+2. 当受支持的应用回到前台时，在其后的几秒窗口内寻找「跳过」「跳过广告」「4 跳过」这类按钮。
+3. 找到文本就直接点击；找不到时，按该应用固定的按钮位置点一次（位置比例写在 `assets/rules.json` 里）。
+4. 点击之前会强制校验当前窗口的包名必须等于目标应用，避免误点到桌面或其它应用。
+
+安全设计：
+
+- 只在「应用重新回到前台」后开始工作，平时不读取任何界面
+- 同一次前台会话最多点击一次
+- 出现「同意 / 授权 / 支付 / 登录 / 片头片尾」等文案时整体放弃本次操作
+- 系统 UI、输入法、权限弹窗不会打断正在进行的会话
+
+## 隐私
+
+**承诺：不上传任何数据到云端。**
+
+- 应用**没有申请 `INTERNET` 权限**，从系统层面就不具备联网能力，无法把任何数据发出去
+- 事件日志只写入本机 `Download/SkipAd/events.log`，供你自己排查
+- 跳过次数统计只保存在本地，卸载即清除
+- 不收集设备信息、不收集账号、不读取剪贴板和输入内容
+
+## 常见问题
+
+### 无障碍开关是灰色点不动
+
+从浏览器或文件管理安装的应用，安卓默认禁止开启无障碍（安全限制）。解除方法：
+
+1. 设置 → 应用 → 应用管理 → 开屏跳过（或在本应用首页点「打开应用详情」）
+2. 进入「权限管理」，找到「允许受限制的设置」并打开（部分机型在页面右上角 ⋮ 菜单里）
+3. 返回 设置 → 无障碍 → 开屏跳过，此时可以打开
+
+### 更新之后不工作了
+
+应用被覆盖安装后，系统会自动关闭它的无障碍服务。重新去 设置 → 无障碍 打开一次即可。
+
+### 某个应用没被跳过
+
+先看应用内「日志」页，它会记录：是否观察到了该应用、窗口类名、节点数量、文本样本，以及最终的命中方式（`text` / `regex` / `region`）。把日志发到 Issues 里即可定位。
+
+## 构建
+
+仓库使用 GitHub Actions 构建，无需本地 Android SDK：
+
+```bash
+git push  # 触发 .github/workflows/build.yml
+```
+
+工作流会安装 JDK 17 与 Android SDK 36，用 Gradle 8.14 编译 `assembleDebug`，产物在 Artifacts 里。
+
+本地构建需要 JDK 17+ 与 Android SDK Platform 36。
+
+## 技术栈
+
+Kotlin · Jetpack Compose (Material 3) · AccessibilityService · AGP 8.13 · compileSdk 36 · minSdk 26
+
+## 免责声明
+
+- 本应用不隶属于任何第三方应用或广告平台
+- 识别依赖界面控件结构与固定的按钮位置，应用改版后可能失效
+- 不同机型、系统版本上的无障碍行为存在差异，效果不完全一致
+- 请遵守各应用的用户协议与当地法律法规
+
+## License
+
+MIT
