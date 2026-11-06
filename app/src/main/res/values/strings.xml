@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">开屏跳过</string>
+    <string name="accessibility_label">开屏跳过</string>
+    <string name="accessibility_description">识别并自动点击应用开屏广告的「跳过」按钮，仅在应用启动后的数秒内工作，不会读取或上传你的任何内容。</string>
+</resources>
