@@ -14,16 +14,27 @@ android {
         applicationId = "com.dsh.skipad"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
+    }
+
+    signingConfigs {
+        create("stable") {
+            storeFile = rootProject.file("keystore/skipad-debug.p12")
+            storePassword = "skipad123"
+            keyAlias = "skipad"
+            keyPassword = "skipad123"
+        }
     }
 
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("stable")
         }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("stable")
         }
     }
 

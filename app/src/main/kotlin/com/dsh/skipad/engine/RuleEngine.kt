@@ -7,70 +7,75 @@ import java.util.ArrayDeque
 
 /**
  * 在无障碍树上找「跳过」目标。
- * 顺序：文本/正则命中 → （带锚点校验的）固定坐标兜底。
- * 任何情况下只要屏幕上出现危险文案（协议/授权/支付等）就整体放弃本次点击。
+ *
+ * 判定顺序：
+ *  1) 屏幕出现危险文案（协议/授权/支付/片头片尾等）→ 整体放弃本次
+ *  2) 文本 / 正则精确命中
+ *  3) 固定坐标兜底，但必须同时满足：锚点文字在屏、锚点位于屏幕上部、已过延迟
  */
 object RuleEngine {
 
     private const val MAX_NODES = 600
 
+    /** 出现即放弃：这些是真实交互，不该被开屏规则碰到 */
     private val DANGER = listOf(
-        "同意", "允许", "授权", "登录", "支付", "购买", "立即领取", "下载安装", "确认支付"
+        "同意", "允许", "授权", "登录", "支付", "购买", "立即领取", "下载安装", "确认支付",
+        "青少年模式", "隐私政策", "用户协议"
     )
 
-    /** 拦截词：出现即不点，避免把开屏之外的操作搞乱 */
-    private val BLOCK_TEXTS = listOf("青少年模式", "隐私政策", "用户协议")
+    /** 形如「跳过」但其实是播放器功能的文案 */
+    private val NOT_SPLASH = listOf("片头", "片尾", "弹幕", "跳过设置", "跳过片头")
 
-    fun find(svc: AccessibilityService, root: AccessibilityNodeInfo, rule: Rule, elapsedMs: Long): Hit? {
+    fun find(
+        svc: AccessibilityService,
+        root: AccessibilityNodeInfo,
+        rule: Rule,
+        elapsedMs: Long
+    ): Hit? {
         val nodes = ArrayList<AccessibilityNodeInfo>()
         collect(root, nodes)
+        if (nodes.isEmpty()) return null
 
-        // 1. 危险/拦截文案 → 本次放弃
-        if (nodes.any { n -> textOf(n)?.let { t -> DANGER.any { t.contains(it) } } == true }) {
-            return null
-        }
-        if (nodes.any { n -> textOf(n)?.let { t -> BLOCK_TEXTS.any { t.contains(it) } } == true }) {
-            return null
+        val screenH = svc.resources.displayMetrics.heightPixels
+        val screenW = svc.resources.displayMetrics.widthPixels
+
+        for (n in nodes) {
+            val t = textOf(n) ?: continue
+            if (DANGER.any { t.contains(it) }) return null
+            if (NOT_SPLASH.any { t.contains(it) }) return null
         }
 
-        // 2. 文本 / 正则匹配
+        // 文本 / 正则
         for (m in rule.matchers) {
-            when (m.type) {
-                "regex" -> {
-                    val re = try {
-                        Regex(m.value)
-                    } catch (t: Throwable) {
-                        continue
-                    }
-                    for (n in nodes) {
-                        val t = (textOf(n) ?: continue).trim()
-                        if (re.matches(t)) return centerHit(n, "regex:$t")
-                    }
+            if (m.type == "regex") {
+                val re = try {
+                    Regex(m.value)
+                } catch (t: Throwable) {
+                    continue
                 }
-                else -> {
-                    for (n in nodes) {
-                        val t = textOf(n) ?: continue
-                        if (t.contains(m.value, ignoreCase = true)) {
-                            // 只点可见且尺寸合理的节点
-                            if (visibleSize(n) >= 24) return centerHit(n, "text:$t")
-                        }
-                    }
+                for (n in nodes) {
+                    val t = (textOf(n) ?: continue).trim()
+                    if (re.matches(t) && isSane(n)) return centerHit(n, "regex:$t")
+                }
+            } else {
+                for (n in nodes) {
+                    val t = textOf(n) ?: continue
+                    if (!t.contains(m.value, ignoreCase = true)) continue
+                    if (isSane(n)) return centerHit(n, "text:$t")
                 }
             }
         }
 
-        // 3. 固定坐标兜底（需锚点在屏 + 已过初始延迟）
-        if (rule.hasRegion && elapsedMs >= rule.delayMs + 400L) {
-            val anchored = if (rule.anchor.isBlank()) {
-                true
-            } else {
-                nodes.any { n -> textOf(n)?.contains(rule.anchor) == true }
+        // 固定坐标兜底：必须看到锚点在屏幕上部
+        if (rule.hasRegion && elapsedMs >= rule.delayMs + 250L) {
+            val anchored = nodes.any { n ->
+                val t = textOf(n)
+                t != null && t.contains(rule.anchor) && topOf(n) < screenH * 0.35f
             }
             if (anchored) {
-                val dm = svc.resources.displayMetrics
-                val x = (dm.widthPixels * rule.regionFx).toInt()
-                val y = (dm.heightPixels * rule.regionFy).toInt()
-                return Hit(null, x, y, "region")
+                val x = (screenW * rule.regionFx).toInt()
+                val y = (screenH * rule.regionFy).toInt()
+                return Hit(null, x, y, "region(anchor=${rule.anchor})")
             }
         }
 
@@ -97,19 +102,38 @@ object RuleEngine {
     }
 
     private fun textOf(n: AccessibilityNodeInfo): String? {
-        val a = n.text?.toString()
+        val a = try {
+            n.text?.toString()
+        } catch (t: Throwable) {
+            null
+        }
         if (!a.isNullOrBlank()) return a
-        val b = n.contentDescription?.toString()
+        val b = try {
+            n.contentDescription?.toString()
+        } catch (t: Throwable) {
+            null
+        }
         if (!b.isNullOrBlank()) return b
         return null
     }
 
-    private fun visibleSize(n: AccessibilityNodeInfo): Int {
+    /** 可见、尺寸合理、可交互，避免点到全屏大图或不可见节点 */
+    private fun isSane(n: AccessibilityNodeInfo): Boolean {
         val r = Rect()
         n.getBoundsInScreen(r)
-        if (r.width() <= 0 || r.height() <= 0) return 0
-        if (!n.isVisibleToUser) return 0
-        return minOf(r.width(), r.height())
+        if (r.width() <= 0 || r.height() <= 0) return false
+        if (r.width() > 2000 || r.height() > 2000) return false
+        return try {
+            n.isVisibleToUser
+        } catch (t: Throwable) {
+            true
+        }
+    }
+
+    private fun topOf(n: AccessibilityNodeInfo): Int {
+        val r = Rect()
+        n.getBoundsInScreen(r)
+        return r.top
     }
 
     private fun centerHit(n: AccessibilityNodeInfo, via: String): Hit {

@@ -55,10 +55,12 @@ object Rules {
             out[pkg] = Rule(
                 pkg = pkg,
                 enabled = o.optBoolean("enabled", true),
-                delayMs = o.optLong("delayMs", 200L),
-                windowMs = o.optLong("windowMs", 6000L),
+                delayMs = o.optLong("delayMs", 60L),
+                windowMs = o.optLong("windowMs", 5000L),
                 maxClicks = o.optInt("maxClicks", 1),
                 anchor = o.optString("anchor", ""),
+                activity = o.optString("activity", ""),
+                cooldownMs = o.optLong("cooldownMs", 120000L),
                 regionFx = o.optDouble("regionFx", 0.0).toFloat(),
                 regionFy = o.optDouble("regionFy", 0.0).toFloat(),
                 matchers = matchers
