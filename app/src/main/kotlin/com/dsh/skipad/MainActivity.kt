@@ -6,8 +6,20 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -41,27 +53,36 @@ class MainActivity : ComponentActivity() {
             SkipAdTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     var tab by remember { mutableIntStateOf(0) }
-                    val tabs = listOf("首页" to "🏠", "规则" to "📋", "日志" to "📝")
 
                     Scaffold(
                         bottomBar = {
                             NavigationBar {
-                                tabs.forEachIndexed { index, item ->
-                                    NavigationBarItem(
-                                        selected = tab == index,
-                                        onClick = { tab = index },
-                                        icon = { Text(item.second) },
-                                        label = { Text(item.first) }
-                                    )
-                                }
+                                NavItem(0, tab, Icons.Filled.Home, "首页") { tab = it }
+                                NavItem(1, tab, Icons.Filled.List, "规则") { tab = it }
+                                NavItem(2, tab, Icons.Filled.Info, "日志") { tab = it }
                             }
                         }
                     ) { padding ->
                         Box(Modifier.padding(padding)) {
-                            when (tab) {
-                                0 -> HomeScreen(ctx)
-                                1 -> RulesScreen(ctx)
-                                else -> LogScreen()
+                            AnimatedContent(
+                                targetState = tab,
+                                transitionSpec = {
+                                    val forward = targetState > initialState
+                                    val enter = slideInHorizontally(tween(280)) { w ->
+                                        if (forward) w / 8 else -w / 8
+                                    } + fadeIn(tween(220))
+                                    val exit = slideOutHorizontally(tween(280)) { w ->
+                                        if (forward) -w / 10 else w / 10
+                                    } + fadeOut(tween(140))
+                                    enter togetherWith exit
+                                },
+                                label = "tab"
+                            ) { t ->
+                                when (t) {
+                                    0 -> HomeScreen(ctx)
+                                    1 -> RulesScreen(ctx)
+                                    else -> LogScreen()
+                                }
                             }
                         }
                     }
@@ -69,6 +90,22 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+@androidx.compose.runtime.Composable
+private fun NavItem(
+    index: Int,
+    current: Int,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onSelect: (Int) -> Unit
+) {
+    NavigationBarItem(
+        selected = current == index,
+        onClick = { onSelect(index) },
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label) }
+    )
 }
 
 fun isServiceEnabled(ctx: Context): Boolean {

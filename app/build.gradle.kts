@@ -14,8 +14,8 @@ android {
         applicationId = "com.dsh.skipad"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "1.0.0"
+        versionCode = 11
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -69,6 +69,8 @@ kotlin {
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2026.03.01"))
     implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.animation:animation")
+    implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.10.1")
