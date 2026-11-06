@@ -34,33 +34,49 @@ import androidx.compose.ui.unit.dp
 private const val REPO_URL = "https://github.com/MCJF28/skipad"
 
 /** 版本更新说明（应用内展示，不联网） */
-private val CHANGELOG: List<Pair<String, List<String>>> = listOf(
+private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = listOf(
     "1.5" to listOf(
-        "版本更新改为弹窗提示，可直接在弹窗内下载并安装",
-        "主版本号更新（如 2.0）时强制更新，不可跳过",
-        "更新日志按次版本归类，小版本合并展示"
+        "1.5.1" to listOf(
+            "更新日志按次版本归类的同时，保留每个修订号各自的改动"
+        ),
+        "1.5.0" to listOf(
+            "新版本改为弹窗提示，可直接在弹窗内下载安装",
+            "主版本号更新（如 2.0）强制更新，不可跳过"
+        )
     ),
     "1.4" to listOf(
-        "每次启动自动检查更新",
-        "应用内下载与一键安装，首页显示新版本提示",
-        "新增网络权限，仅用于检查更新与下载"
+        "1.4.1" to listOf(
+            "改为每次启动都检查更新（1.4.0 是 12 小时内只检查一次）"
+        ),
+        "1.4.0" to listOf(
+            "新增自动检查更新与仓库 Release 分发",
+            "应用内下载与一键安装，首页显示新版本提示",
+            "新增网络权限，仅用于检查更新与下载"
+        )
     ),
     "1.3" to listOf(
-        "新增「关于」页：工作原理、隐私承诺、能力边界",
-        "应用内更新日志，仓库补充 README"
+        "1.3.1" to listOf("补充应用内更新日志与 README"),
+        "1.3.0" to listOf("新增「关于」页：工作原理、隐私承诺、能力边界")
     ),
     "1.2" to listOf(
-        "修复应用图标与名称读取不到的问题",
-        "新增 7 个应用的开屏规则",
-        "移除高德地图"
+        "1.2.1" to listOf("修复跳过后回桌面误点桌面图标"),
+        "1.2.0" to listOf(
+            "修复应用图标与名称读取不到的问题",
+            "新增 7 个应用的开屏规则",
+            "移除高德地图"
+        )
     ),
     "1.1" to listOf(
-        "改用 Material 图标，页签切换与卡片加入过渡动画",
-        "新增侧载应用「允许受限设置」引导"
+        "1.1.0" to listOf(
+            "改用 Material 图标，页签切换与卡片加入过渡动画",
+            "新增侧载应用「允许受限设置」引导"
+        )
     ),
     "1.0" to listOf(
-        "界面重构为 首页 / 规则 / 日志",
-        "新增跳过统计、单应用开关、深色模式"
+        "1.0.0" to listOf(
+            "界面重构为 首页 / 规则 / 日志",
+            "新增跳过统计、单应用开关、深色模式"
+        )
     )
 )
 
@@ -160,15 +176,23 @@ fun AboutScreen(ctx: Context) {
 
         item {
             SectionCard("更新日志") {
-                CHANGELOG.forEachIndexed { index, entry ->
+                CHANGELOG.forEachIndexed { index, group ->
                     Text(
-                        text = "v${entry.first}",
+                        text = "v${group.first}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = if (index == 0) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurface
                     )
-                    entry.second.forEach { Bullet("·", it) }
+                    group.second.forEach { sub ->
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = sub.first,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        sub.second.forEach { Bullet("·", it) }
+                    }
                     if (index != CHANGELOG.lastIndex) Spacer(Modifier.height(10.dp))
                 }
             }
