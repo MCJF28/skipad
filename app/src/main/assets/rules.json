@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "updated": "2026-11-06",
+  "rules": [
+    {
+      "pkg": "tv.danmaku.bili",
+      "enabled": true,
+      "delayMs": 200,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "anchor": "广告",
+      "regionFx": 0.868,
+      "regionFy": 0.929,
+      "matchers": [
+        { "type": "text", "value": "跳过" },
+        { "type": "regex", "value": "^跳过\\s*\\d*\\s*[sS]?$" },
+        { "type": "text", "value": "Skip" }
+      ]
+    },
+    {
+      "pkg": "com.autonavi.minimap",
+      "enabled": true,
+      "delayMs": 200,
+      "windowMs": 6000,
+      "maxClicks": 1,
+      "anchor": "",
+      "regionFx": 0.0,
+      "regionFy": 0.0,
+      "matchers": [
+        { "type": "text", "value": "跳过" },
+        { "type": "regex", "value": "^跳过\\s*\\d*\\s*[sS]?$" },
+        { "type": "text", "value": "跳过广告" }
+      ]
+    }
+  ]
+}

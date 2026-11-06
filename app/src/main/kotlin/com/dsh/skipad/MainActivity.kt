@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dsh.skipad.data.LogBus
+import com.dsh.skipad.engine.Rules
 import com.dsh.skipad.service.SkipAccessibilityService
 import kotlinx.coroutines.delay
 
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val ctx = applicationContext
+        Rules.load(ctx)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -61,6 +63,10 @@ fun HomeScreen(ctx: Context) {
         Text(
             text = if (enabled) "无障碍服务：已开启 ✓" else "无障碍服务：未开启",
             style = MaterialTheme.typography.bodyLarge
+        )
+        Text(
+            text = "规则库：${Rules.size()} 条",
+            style = MaterialTheme.typography.bodyMedium
         )
         Spacer(Modifier.height(16.dp))
         Button(onClick = {
