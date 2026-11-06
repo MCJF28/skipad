@@ -60,7 +60,7 @@ object Rules {
                 maxClicks = o.optInt("maxClicks", 1),
                 anchor = o.optString("anchor", ""),
                 activity = o.optString("activity", ""),
-                cooldownMs = o.optLong("cooldownMs", 120000L),
+                cooldownMs = o.optLong("cooldownMs", 3000L),
                 regionFx = o.optDouble("regionFx", 0.0).toFloat(),
                 regionFy = o.optDouble("regionFy", 0.0).toFloat(),
                 matchers = matchers

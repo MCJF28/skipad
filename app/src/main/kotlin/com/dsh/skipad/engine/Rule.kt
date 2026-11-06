@@ -31,7 +31,7 @@ data class Rule(
     val maxClicks: Int = 1,
     val anchor: String = "",
     val activity: String = "",
-    val cooldownMs: Long = 120000L,
+    val cooldownMs: Long = 3000L,
     val regionFx: Float = 0f,
     val regionFy: Float = 0f,
     val matchers: List<Matcher> = emptyList()
