@@ -35,16 +35,12 @@ private const val REPO_URL = "https://github.com/MCJF28/skipad"
 
 /** 版本更新说明（应用内展示，不联网） */
 private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = listOf(
-    "1.5" to listOf(
-        "1.5.1" to listOf(
-            "更新日志按次版本归类的同时，保留每个修订号各自的改动"
-        ),
-        "1.5.0" to listOf(
-            "新版本改为弹窗提示，可直接在弹窗内下载安装",
-            "主版本号更新（如 2.0）强制更新，不可跳过"
-        )
-    ),
     "1.4" to listOf(
+        "1.4.2" to listOf(
+            "新版本改为弹窗提示，可直接在弹窗内下载安装",
+            "主版本号更新（如 2.0）强制更新，不可关闭、不可跳过",
+            "更新日志按次版本归类，组内保留每个修订号的改动"
+        ),
         "1.4.1" to listOf(
             "改为每次启动都检查更新（1.4.0 是 12 小时内只检查一次）"
         ),
