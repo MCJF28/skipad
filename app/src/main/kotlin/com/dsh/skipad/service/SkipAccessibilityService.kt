@@ -69,8 +69,10 @@ class SkipAccessibilityService : AccessibilityService() {
 
         val r = Rules.forPackage(pkg) ?: return
 
+        // 只要目标包离开过前台，本次就是全新会话，不再用时间冷却拦截。
+        // cooldownMs 仅在规则显式配置（>0）时作为额外防抖使用。
         val last = lastClickAt[pkg] ?: 0L
-        if (last > 0L && SystemClock.uptimeMillis() - last < r.cooldownMs) {
+        if (r.cooldownMs > 0L && last > 0L && SystemClock.uptimeMillis() - last < r.cooldownMs) {
             LogBus.add("$pkg 冷却中，跳过")
             return
         }
