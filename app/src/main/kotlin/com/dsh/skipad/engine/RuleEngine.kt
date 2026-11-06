@@ -20,6 +20,16 @@ object RuleEngine {
 
     private const val MAX_NODES = 600
 
+    /** 空树判定阈值：节点数不超过这个值，视为"页面还没加载出来/广告画在画布上" */
+    private const val EMPTY_TREE_MAX = 6
+
+    /** 最近一次扫描的诊断信息，供日志使用 */
+    @Volatile
+    var lastNodeCount: Int = 0
+
+    @Volatile
+    var lastSample: String = ""
+
     /** 开屏广告浮层的典型窗口类名 */
     private val OVERLAY_CLASS = Regex(
         "^(android\\.widget\\.(FrameLayout|LinearLayout|RelativeLayout|AbsoluteLayout|ViewGroup)" +
@@ -42,6 +52,13 @@ object RuleEngine {
     ): Hit? {
         val nodes = ArrayList<AccessibilityNodeInfo>()
         collect(root, nodes)
+        lastNodeCount = nodes.size
+        lastSample = nodes.asSequence()
+            .mapNotNull { textOf(it)?.trim() }
+            .filter { it.isNotEmpty() }
+            .take(5)
+            .joinToString("|")
+            .take(80)
         if (nodes.isEmpty()) return null
 
         val dm = svc.resources.displayMetrics
@@ -82,8 +99,16 @@ object RuleEngine {
                 t != null && t.contains(rule.anchor) && topOf(n) < screenH * 0.35f
             }
             val overlayOk = OVERLAY_CLASS.matches(windowClass)
-            if (anchorOk || overlayOk) {
-                val via = if (overlayOk) "region(overlay=$windowClass)" else "region(anchor=${rule.anchor})"
+            // 开屏广告画在应用自己的 Activity 里时，无障碍树几乎是空的（只有 1~3 个节点），
+            // 而正常页面加载完节点数会明显更多。用「空树 + 时间窗」作为第三种判据。
+            val emptyTreeOk = nodes.size <= EMPTY_TREE_MAX && elapsedMs in 1000L..3500L
+
+            if (anchorOk || overlayOk || emptyTreeOk) {
+                val via = when {
+                    overlayOk -> "region(overlay=$windowClass)"
+                    anchorOk -> "region(anchor=${rule.anchor})"
+                    else -> "region(emptyTree=${nodes.size})"
+                }
                 val x = (screenW * rule.regionFx).toInt()
                 val y = (screenH * rule.regionFy).toInt()
                 return Hit(null, x, y, via)

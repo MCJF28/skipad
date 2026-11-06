@@ -106,7 +106,7 @@ class SkipAccessibilityService : AccessibilityService() {
             if (now - lastTargetSeen > 1200L) {
                 running = false
                 handler.removeCallbacks(poll)
-                LogBus.add("会话结束 $sessionPkg（未见跳过，节点 $seenNodes）")
+                LogBus.add("会话结束 $sessionPkg（节点 $seenNodes，文本 ${RuleEngine.lastSample}）")
             }
         } else {
             leftForeground = true
@@ -121,7 +121,7 @@ class SkipAccessibilityService : AccessibilityService() {
         if (elapsed > r.windowMs) {
             running = false
             handler.removeCallbacks(poll)
-            LogBus.add("窗口结束 ${r.pkg}（未见跳过，节点 $seenNodes）")
+            LogBus.add("窗口结束 ${r.pkg}（节点 $seenNodes，文本 ${RuleEngine.lastSample}）")
             return
         }
         lastScanAt = SystemClock.uptimeMillis()
@@ -135,7 +135,7 @@ class SkipAccessibilityService : AccessibilityService() {
             seenNodes = 0
             return
         }
-        seenNodes = root.childCount
+        seenNodes = RuleEngine.lastNodeCount
 
         val hit = RuleEngine.find(this, root, r, elapsed, currentClass) ?: return
         if (click(hit)) {
