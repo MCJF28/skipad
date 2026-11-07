@@ -67,6 +67,10 @@ class MainActivity : ComponentActivity() {
                 if (Prefs.shouldAutoCheck()) {
                     UpdateChecker.silentCheck(ctx)
                 }
+                // 广告域名规则：没有就自动拉一份
+                if (NetRules.count == 0) {
+                    NetRules.refresh(ctx)
+                }
             }
 
             SkipAdTheme {

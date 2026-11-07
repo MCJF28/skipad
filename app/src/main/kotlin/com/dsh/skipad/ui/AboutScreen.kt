@@ -35,6 +35,13 @@ private const val REPO_URL = "https://github.com/MCJF28/skipad"
 
 /** 版本更新说明（应用内展示，不联网） */
 private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = listOf(
+    "2.4" to listOf(
+        "2.4.0" to listOf(
+            "学习模式：点按后画出标记，底部有「完成」按钮，不用手动退出应用",
+            "学习时自动截取按钮小图，运行时用图像匹配找位置（换分辨率也能跟上）",
+            "广告域名规则改为自动下载，无需手动点"
+        )
+    ),
     "2.3" to listOf(
         "2.3.0" to listOf(
             "新增「测试拦截效果」：实际解析两个广告域名，验证是否真的被拦",

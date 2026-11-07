@@ -1,6 +1,8 @@
 package com.dsh.skipad.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.accessibilityservice.GestureDescription
@@ -8,6 +10,7 @@ import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.view.Display
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -17,12 +20,14 @@ import android.widget.Toast
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.dsh.skipad.data.CustomRules
+import com.dsh.skipad.data.Templates
 import com.dsh.skipad.data.LogBus
 import com.dsh.skipad.data.Prefs
 import com.dsh.skipad.engine.Hit
 import com.dsh.skipad.engine.Rule
 import com.dsh.skipad.engine.RuleEngine
 import com.dsh.skipad.engine.Rules
+import com.dsh.skipad.engine.TemplateMatcher
 
 /**
  * 开屏广告跳过服务。
@@ -196,15 +201,19 @@ class SkipAccessibilityService : AccessibilityService() {
 
         seenNodes = RuleEngine.lastNodeCount
 
-        val hit = RuleEngine.find(this, root, r, elapsed, currentClass) ?: return
-        if (click(hit)) {
+        val hit = RuleEngine.find(this, root, r, elapsed, currentClass)
+        if (hit != null && click(hit)) {
             clicks++
             lastClickAt[r.pkg] = SystemClock.uptimeMillis()
             running = false
             handler.removeCallbacks(poll)
             Prefs.onSkip(r.pkg)
             LogBus.add("已跳过 ${r.pkg} · ${hit.via} · ${elapsed}ms")
+            return
         }
+
+        // 文字和坐标都没命中时，用学习阶段存下的按钮图像做匹配
+        if (elapsed > 700L) tryVisualScan(r)
     }
 
     // ---------------- 学习模式：校准浮层 ----------------
@@ -221,14 +230,25 @@ class SkipAccessibilityService : AccessibilityService() {
 
     private fun showCalibrationOverlay(pkg: String) {
         val wm = getSystemService(WINDOW_SERVICE) as? WindowManager ?: return
-        val hint = TextView(this).apply {
-            text = "点一下「跳过」按钮记录位置\n可重复点按调整 · 退出该应用即结束学习"
-            textSize = 17f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setBackgroundColor(0x99000000.toInt())
-            isClickable = true
-        }
+
+        val view = CalibrationView(
+            this,
+            onPick = { rawX, rawY ->
+                val dm = resources.displayMetrics
+                val fx = (rawX / dm.widthPixels).coerceIn(0.01f, 0.99f)
+                val fy = (rawY / dm.heightPixels).coerceIn(0.01f, 0.99f)
+                CustomRules.save(pkg, fx, fy)
+                LogBus.add("学习记录 $pkg → (${"%.3f".format(fx)}, ${"%.3f".format(fy)})")
+                Toast.makeText(this, "已记录位置，可继续调整；点「完成」结束", Toast.LENGTH_SHORT).show()
+                captureTemplate(pkg, rawX, rawY)
+            },
+            onFinish = {
+                Prefs.clearPendingCalibration()
+                hideCalibrationOverlay()
+                LogBus.add("学习完成 $pkg")
+            }
+        )
+
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -237,29 +257,58 @@ class SkipAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
-        hint.setOnTouchListener { v, ev ->
-            if (ev.action == MotionEvent.ACTION_UP) {
-                val w = if (v.width > 0) v.width else resources.displayMetrics.widthPixels
-                val h = if (v.height > 0) v.height else resources.displayMetrics.heightPixels
-                val fx = (ev.rawX / w).coerceIn(0.01f, 0.99f)
-                val fy = (ev.rawY / h).coerceIn(0.01f, 0.99f)
-                CustomRules.save(pkg, fx, fy)
-                LogBus.add("学习记录 $pkg → (${"%.3f".format(fx)}, ${"%.3f".format(fy)})")
-                // 不关闭浮层：允许再点一次调整，退出该应用时才结束学习
-                Toast.makeText(
-                    this,
-                    "已记录位置，可再点一次调整；退出该应用即结束学习",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            true
-        }
         try {
-            wm.addView(hint, params)
-            overlayView = hint
-            LogBus.add("开始学习 $pkg，等待点击跳过按钮")
+            wm.addView(view, params)
+            overlayView = view
+            LogBus.add("开始学习 $pkg")
         } catch (t: Throwable) {
             LogBus.add("校准浮层失败: ${t.message}")
+        }
+    }
+
+    /** 截取按钮附近一小块存为模板，供后续图像匹配 */
+    private fun captureTemplate(pkg: String, x: Float, y: Float) {
+        if (android.os.Build.VERSION.SDK_INT < 30) return
+        try {
+            takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+                override fun onSuccess(result: ScreenshotResult) {
+                    var bmp: Bitmap? = null
+                    try {
+                        bmp = Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
+                            ?.copy(Bitmap.Config.ARGB_8888, false)
+                    } catch (t: Throwable) {
+                        bmp = null
+                    } finally {
+                        try {
+                            result.hardwareBuffer.close()
+                        } catch (t: Throwable) {
+                            // 忽略
+                        }
+                    }
+                    val full = bmp ?: return
+                    try {
+                        val halfW = 130
+                        val halfH = 65
+                        val left = (x.toInt() - halfW).coerceAtLeast(0)
+                        val top = (y.toInt() - halfH).coerceAtLeast(0)
+                        val right = (x.toInt() + halfW).coerceAtMost(full.width)
+                        val bottom = (y.toInt() + halfH).coerceAtMost(full.height)
+                        if (right - left < 40 || bottom - top < 20) return
+                        val crop = Bitmap.createBitmap(full, left, top, right - left, bottom - top)
+                        if (Templates.save(this@SkipAccessibilityService, pkg, crop)) {
+                            LogBus.add("已保存按钮图像 $pkg（${crop.width}x${crop.height}）")
+                        }
+                    } catch (t: Throwable) {
+                        LogBus.add("保存按钮图像失败: ${t.message}")
+                    }
+                }
+
+                override fun onFailure(errorCode: Int) {
+                    LogBus.add("截屏失败 code=$errorCode")
+                }
+            })
+        } catch (t: Throwable) {
+            LogBus.add("截屏异常: ${t.message}")
         }
     }
 
@@ -303,6 +352,54 @@ class SkipAccessibilityService : AccessibilityService() {
             lastPairClickAt = SystemClock.uptimeMillis()
             Prefs.onSkip(r.pkg)
             LogBus.add("已点击 ${hit.via} · $pkg")
+        }
+    }
+
+    @Volatile
+    private var lastShotAt = 0L
+
+    private fun tryVisualScan(r: Rule) {
+        if (android.os.Build.VERSION.SDK_INT < 30) return
+        if (!Templates.has(this, r.pkg)) return
+        val now = SystemClock.uptimeMillis()
+        if (now - lastShotAt < 600L) return
+        lastShotAt = now
+        try {
+            takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+                override fun onSuccess(result: ScreenshotResult) {
+                    var bmp: Bitmap? = null
+                    try {
+                        bmp = Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
+                            ?.copy(Bitmap.Config.ARGB_8888, false)
+                    } catch (t: Throwable) {
+                        bmp = null
+                    } finally {
+                        try {
+                            result.hardwareBuffer.close()
+                        } catch (t: Throwable) {
+                            // 忽略
+                        }
+                    }
+                    val full = bmp ?: return
+                    if (!running || clicks >= r.maxClicks) return
+                    val tpl = Templates.load(this@SkipAccessibilityService, r.pkg) ?: return
+                    val point = TemplateMatcher.find(full, tpl) ?: return
+                    LogBus.add("图像命中 ${r.pkg} @(${point.x}, ${point.y})")
+                    if (click(Hit(null, point.x, point.y, "template"))) {
+                        clicks++
+                        running = false
+                        handler.removeCallbacks(poll)
+                        Prefs.onSkip(r.pkg)
+                        LogBus.add("已跳过 ${r.pkg} · template")
+                    }
+                }
+
+                override fun onFailure(errorCode: Int) {
+                    // 截屏失败就静默跳过，不打断主流程
+                }
+            })
+        } catch (t: Throwable) {
+            // 忽略
         }
     }
 

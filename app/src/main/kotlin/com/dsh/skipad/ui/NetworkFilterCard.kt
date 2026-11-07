@@ -76,6 +76,9 @@ fun NetworkFilterCard(ctx: Context) {
     }
 
     fun enableNow() {
+        if (NetRules.count == 0) {
+            scope.launch { NetRules.refresh(ctx) }
+        }
         val prep = try {
             VpnService.prepare(ctx)
         } catch (t: Throwable) {
