@@ -36,6 +36,10 @@ private const val REPO_URL = "https://github.com/MCJF28/skipad"
 /** 版本更新说明（应用内展示，不联网） */
 private val CHANGELOG: List<Pair<String, List<Pair<String, List<String>>>>> = listOf(
     "2.4" to listOf(
+        "2.4.1" to listOf(
+            "更新界面显示从安装包本体读出的版本号与 md5，用于定位\"装到的不是下载的那个包\"的问题",
+            "下载完成后会与期望版本比对，不一致直接拒绝安装"
+        ),
         "2.4.0" to listOf(
             "学习模式：点按后画出标记，底部有「完成」按钮，不用手动退出应用",
             "学习时自动截取按钮小图，运行时用图像匹配找位置（换分辨率也能跟上）",
@@ -324,7 +328,7 @@ private fun UpdateCard(ctx: Context) {
                 Text("正在下载 ${state.percent}%", style = MaterialTheme.typography.bodySmall)
             }
             is UpdateChecker.State.Downloaded -> {
-                Text("下载完成 v${state.version}（versionCode ${state.code}），点击安装", style = MaterialTheme.typography.bodySmall)
+                Text("下载完成：文件 v${state.version}（${state.code}）· md5 ${state.md5.take(8)}…", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { UpdateChecker.install(ctx, state.file) }) {
                     Text("安装更新")

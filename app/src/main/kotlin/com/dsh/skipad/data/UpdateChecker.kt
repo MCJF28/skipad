@@ -35,7 +35,12 @@ object UpdateChecker {
         data object UpToDate : State
         data class Available(val version: String, val url: String, val notes: String) : State
         data class Downloading(val percent: Int) : State
-        data class Downloaded(val file: File, val version: String = "", val code: Long = 0L) : State
+        data class Downloaded(
+            val file: File,
+            val version: String = "",
+            val code: Long = 0L,
+            val md5: String = ""
+        ) : State
         data class Failed(val message: String) : State
     }
 
@@ -141,21 +146,41 @@ object UpdateChecker {
             }
             conn.disconnect()
 
-            val newCode = archiveVersionCode(ctx, out)
+            val info = ctx.packageManager.getPackageArchiveInfo(out.absolutePath, 0)
+            val newCode = if (info == null) -1L else
+                if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else
+                    @Suppress("DEPRECATION") info.versionCode.toLong()
+            val newName = info?.versionName ?: "?"
             val curCode = currentVersionCode(ctx)
-            LogBus.add("下载完成 v$version · versionCode=$newCode（当前 $curCode）· ${out.length()} 字节")
+            val md5 = md5Of(out)
+            LogBus.add("下载完成：文件 v$newName($newCode) · 期望 v$version · ${out.length()}B · md5=${md5.take(8)}")
             if (newCode <= 0L) {
-                state = State.Failed("下载到的文件不是有效的安装包")
+                state = State.Failed("下载到的文件不是有效的安装包（可能是失败的页面或残缺文件）")
                 return@withContext
             }
             if (newCode <= curCode) {
-                state = State.Failed("下载到的安装包版本未高于当前版本（$newCode ≤ $curCode），已放弃安装")
+                state = State.Failed("下载到的文件是 v$newName（$newCode），不高于当前 $curCode，已放弃安装")
                 return@withContext
             }
-            state = State.Downloaded(out, version, newCode)
+            state = State.Downloaded(out, newName, newCode, md5)
         } catch (t: Throwable) {
             state = State.Failed("下载失败：${t.message}")
         }
+    }
+
+    private fun md5Of(f: File): String = try {
+        val md = java.security.MessageDigest.getInstance("MD5")
+        f.inputStream().use { input ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        md.digest().joinToString("") { "%02x".format(it) }
+    } catch (t: Throwable) {
+        "?"
     }
 
     @Suppress("DEPRECATION")

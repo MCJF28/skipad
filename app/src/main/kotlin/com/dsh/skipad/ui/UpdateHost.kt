@@ -87,7 +87,7 @@ fun UpdateHost(ctx: Context) {
                         Text("正在下载… ${s.percent}%", style = MaterialTheme.typography.bodyMedium)
                     }
                     is UpdateChecker.State.Downloaded -> {
-                        Text("下载完成 v${s.version}（${s.code}）", style = MaterialTheme.typography.bodyMedium)
+                        Text("下载完成：文件 v${s.version}（${s.code}）\nmd5 ${s.md5.take(8)}…", style = MaterialTheme.typography.bodyMedium)
                     }
                     is UpdateChecker.State.Failed -> {
                         Text(
